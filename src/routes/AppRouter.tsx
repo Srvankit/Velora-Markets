@@ -39,6 +39,7 @@ const AccountPage = lazy(() => import('@/pages/user/AccountPage'));
 const PreferencesPage = lazy(() => import('@/pages/user/PreferencesPage'));
 const ActivityPage = lazy(() => import('@/pages/user/ActivityPage'));
 const HelpCenterPage = lazy(() => import('@/pages/user/HelpCenterPage'));
+const WatchlistPage = lazy(() => import('@/pages/WatchlistPage'));
 
 export function AppRouter() {
   return (
@@ -74,6 +75,7 @@ export function AppRouter() {
             <Route path="/markets" element={<MarketsPage />} />
             <Route path="/portfolio" element={<PortfolioPage />} />
             <Route path="/holdings" element={<HoldingsPage />} />
+            <Route path="/watchlist" element={<WatchlistPage />} />
             <Route path="/trade" element={<TradePage />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/wallet" element={<WalletPage />} />
