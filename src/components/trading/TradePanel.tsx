@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RotateCcw, Info, Zap } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -57,6 +57,10 @@ export function TradePanel({ symbol, name, currentPrice, availableBalance, onPre
   const [price, setPrice] = useState(currentPrice.toFixed(2));
   const [stopLoss, setStopLoss] = useState('');
   const [targetPrice, setTargetPrice] = useState('');
+
+  useEffect(() => {
+      setPrice(currentPrice.toFixed(2));
+    }, [currentPrice, symbol]);
 
   const qty = parseInt(quantity) || 0;
   const effectivePrice = orderType === 'market' ? currentPrice : parseFloat(price) || 0;
