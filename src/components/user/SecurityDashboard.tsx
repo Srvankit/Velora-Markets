@@ -6,6 +6,9 @@ import { formatDate, formatRelativeTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { Shield, Lock, Fingerprint, Bell, KeyRound, AlertCircle, Copy, Download } from 'lucide-react';
 import { useState } from 'react';
+import { backendApi, getApiErrorMessage } from '@/services/backend';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 const iconMap: Record<string, typeof Shield> = {
   ShieldCheck: Shield,
@@ -16,10 +19,53 @@ const iconMap: Record<string, typeof Shield> = {
 
 export function SecurityDashboard() {
   const [settings, setSettings] = useState(securitySettings);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
 
   const toggleSetting = (id: string) => {
     setSettings((prev) => prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)));
   };
+
+  const handleChangePassword = async () => {
+  setMessage('');
+  setError('');
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    setError('Please fill in all password fields.');
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    setError('New passwords do not match.');
+    return;
+  }
+
+  try {
+    setSaving(true);
+
+    await backendApi.changePassword({
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    });
+
+    setMessage('Password changed successfully.');
+
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+  } catch (err) {
+    setError(
+      getApiErrorMessage(err, 'Failed to change password.')
+    );
+  } finally {
+    setSaving(false);
+  }
+};
 
   const scoreColor = securityScore.score >= 80 ? 'text-success' : securityScore.score >= 60 ? 'text-warning' : 'text-danger';
   const scoreBg = securityScore.score >= 80 ? 'bg-success' : securityScore.score >= 60 ? 'bg-warning' : 'bg-danger';
@@ -66,6 +112,7 @@ export function SecurityDashboard() {
           </div>
         </div>
       </Card>
+      
 
       {/* Security Settings */}
       <Card className="p-5">
@@ -92,6 +139,7 @@ export function SecurityDashboard() {
                 </div>
                 <Switch checked={setting.enabled} onCheckedChange={() => toggleSetting(setting.id)} />
               </motion.div>
+              
             );
           })}
         </div>
@@ -103,6 +151,54 @@ export function SecurityDashboard() {
           <KeyRound className="h-4 w-4 text-primary" />
           Password Management
         </h3>
+        <Card className="p-5">
+            <h3 className="mb-4 font-display text-base font-semibold">
+              Change Password
+            </h3>
+
+            <div className="space-y-4">
+              <Input
+                type="password"
+                placeholder="Current Password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+              />
+
+              <Input
+                type="password"
+                placeholder="New Password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+
+              <Input
+                type="password"
+                placeholder="Confirm New Password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+
+              {error && (
+                <p className="text-sm text-destructive">
+                  {error}
+                </p>
+              )}
+
+              {message && (
+                <p className="text-sm text-green-600">
+                  {message}
+                </p>
+              )}
+
+              <Button
+                onClick={handleChangePassword}
+                disabled={saving}
+                className="w-full"
+              >
+                {saving ? 'Changing Password...' : 'Change Password'}
+              </Button>
+            </div>
+          </Card>
         <div className="mb-3 flex items-center justify-between">
           <span className="text-sm text-muted-foreground">Password Strength</span>
           <span className="text-sm font-semibold text-success">{passwordStrength.label}</span>

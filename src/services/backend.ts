@@ -30,6 +30,12 @@ export interface UpdateUserRequest {
   country: string;
 }
 
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 export interface BackendHolding {
   id: number;
   symbol: string;
@@ -182,6 +188,13 @@ export const backendApi = {
   apiRequest<BackendDashboard>({
     method: 'GET',
     url: '/dashboard',
+  }),
+
+  changePassword: (data: ChangePasswordRequest) =>
+  apiRequest<string>({
+    method: 'POST',
+    url: '/users/change-password',
+    data,
   }),
 
 watchlist: () =>
