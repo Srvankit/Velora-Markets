@@ -23,6 +23,13 @@ export interface BackendUserResponse {
   emailVerified: boolean;
 }
 
+export interface UpdateUserRequest {
+  fullName: string;
+  username: string;
+  phone: string;
+  country: string;
+}
+
 export interface BackendHolding {
   id: number;
   symbol: string;
@@ -237,6 +244,12 @@ transactions: (page = 0, size = 20) =>
     method: 'GET',
     url: '/trading/transactions',
     params: { page, size },
+  }),
+updateProfile: (data: UpdateUserRequest) =>
+  apiRequest<BackendUserResponse>({
+    method: 'PUT',
+    url: '/users/me',
+    data,
   }),
   placeOrder: (data: { symbol: string; side: 'BUY' | 'SELL'; orderType: 'MARKET'; quantity: number }) =>
     apiRequest<BackendOrderExecution>({ method: 'POST', url: '/trading/orders', data }),

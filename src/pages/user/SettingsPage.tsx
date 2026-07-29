@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Search, User, Bell, Shield, Palette, Globe, Download, HelpCircle, LogOut, ChevronRight } from 'lucide-react';
@@ -14,6 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { languages, dateFormats, currencyFormats } from '@/data/preferences';
 import { cn } from '@/lib/utils';
+import {
+  backendApi,
+  type BackendUserResponse,
+} from '@/services/backend';
 
 const settingsSections = [
   { id: 'account', label: 'Account', icon: User, description: 'Personal information, email, phone, username' },
@@ -88,6 +92,11 @@ export default function SettingsPage() {
 }
 
 function AccountSettings() {
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  
   const [form, setForm] = useState({
     fullName: userProfile.fullName,
     username: userProfile.username,
@@ -98,6 +107,55 @@ function AccountSettings() {
     currency: userProfile.currency,
     timezone: userProfile.timezone,
   });
+
+  const loadProfile = useCallback(async () => {
+    try {
+      const user = await backendApi.me();
+
+      setForm((prev) => ({
+        ...prev,
+        fullName: user.fullName,
+        username: user.username,
+        email: user.email,
+        phone: user.phone ?? '',
+        region: user.country ?? '',
+      }));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+  void loadProfile();
+}, [loadProfile]);
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+
+      await backendApi.updateProfile({
+        fullName: form.fullName,
+        username: form.username,
+        phone: form.phone,
+        country: form.region,
+      });
+
+      alert("Profile updated successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update profile.");
+    } finally {
+      setSaving(false);
+    }
+};
+
+if (loading) {
+  return (
+    <Card className="p-5">
+      <p>Loading account...</p>
+    </Card>
+  );
+}
 
   return (
     <Card className="p-5">
@@ -144,7 +202,13 @@ function AccountSettings() {
       </div>
       <div className="mt-4 flex justify-end gap-2">
         <Button variant="outline" size="sm">Cancel</Button>
-        <Button size="sm">Save Changes</Button>
+        <Button
+          size="sm"
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {saving ? "Saving..." : "Save Changes"}
+        </Button>
       </div>
     </Card>
   );

@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Clock, DollarSign, Briefcase, TrendingUp, Shield, Target, Linkedin, Github, Globe, Pencil, BadgeCheck, Calendar } from 'lucide-react';
@@ -9,12 +10,106 @@ import { AchievementCard, BadgeCard } from '@/components/user/AchievementCard';
 import { userProfile, portfolioQuickStats, investmentProfileStats } from '@/data/profile';
 import { achievements, badges } from '@/data/achievements';
 import { formatDate } from '@/lib/format';
+import {
+  backendApi,
+  type BackendUserResponse,
+} from '@/services/backend';
+
 import { cn } from '@/lib/utils';
 
 const iconMap: Record<string, typeof TrendingUp> = { TrendingUp, Shield, Target, DollarSign };
 
 export default function ProfilePage() {
   const navigate = useNavigate();
+
+  const [user, setUser] =
+    useState<BackendUserResponse | null>(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState<string | null>(null);
+
+  const loadUser = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response =
+        await backendApi.me();
+
+      setUser(response);
+    } catch (err) {
+      console.error(err);
+      setError("Unable to load profile.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadUser();
+  }, [loadUser]);
+
+    const profile = {
+    ...userProfile,
+
+    fullName:
+      user?.fullName ??
+      userProfile.fullName,
+
+    username:
+      user?.username ??
+      userProfile.username,
+
+    email:
+      user?.email ??
+      userProfile.email,
+
+    phone:
+      user?.phone ??
+      userProfile.phone,
+
+    country:
+      user?.country ??
+      userProfile.country,
+
+    verified:
+      user?.emailVerified ??
+      userProfile.verified,
+  };
+
+  if (loading) {
+      return (
+        <div className="flex h-[60vh] items-center justify-center">
+          <p className="text-muted-foreground text-lg">
+            Loading profile...
+          </p>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="flex h-[60vh] items-center justify-center">
+          <Card className="p-6 text-center">
+            <p className="text-red-500 font-semibold">
+              {error}
+            </p>
+
+            <Button
+              className="mt-4"
+              onClick={loadUser}
+            >
+              Retry
+            </Button>
+          </Card>
+        </div>
+      );
+    }
+
+    console.log("Profile from backend:", profile);
 
   return (
     <div className="space-y-6">
@@ -32,16 +127,21 @@ export default function ProfilePage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 {/* Avatar */}
                 <div className="-mt-12 flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-background bg-primary text-2xl font-bold text-primary-foreground shadow-lg">
-                  {userProfile.fullName.split(' ').map(n => n[0]).join('')}
+                  {profile.fullName
+                    .trim()
+                    .split(/\s+/)
+                    .slice(0, 2)
+                    .map((name) => name[0].toUpperCase())
+                    .join("")}
                 </div>
                 <div className="sm:pb-2">
                   <div className="flex items-center gap-1.5">
-                    <h1 className="font-display text-xl font-bold tracking-tight">{userProfile.fullName}</h1>
-                    {userProfile.verified && <BadgeCheck className="h-5 w-5 text-primary" />}
+                    <h1 className="font-display text-xl font-bold tracking-tight">{profile.fullName}</h1>
+                    {profile.verified && <BadgeCheck className="h-5 w-5 text-primary" />}
                   </div>
-                  <p className="text-sm text-muted-foreground">{userProfile.username}</p>
+                  <p className="text-sm text-muted-foreground">{profile.username}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{userProfile.city}, {userProfile.country}</span>
+                    <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{profile.city}, {profile.country ?? "Not specified"}</span>
                     <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />Joined {formatDate(userProfile.joinedDate, { month: 'short', year: 'numeric' })}</span>
                   </div>
                 </div>
@@ -81,10 +181,10 @@ export default function ProfilePage() {
           <Card className="p-5">
             <h3 className="mb-4 font-display text-base font-semibold">Personal Information</h3>
             <div className="grid gap-3 sm:grid-cols-2">
-              <InfoItem icon={Briefcase} label="Occupation" value={userProfile.occupation} />
-              <InfoItem icon={MapPin} label="Location" value={`${userProfile.city}, ${userProfile.country}`} />
-              <InfoItem icon={Clock} label="Timezone" value={userProfile.timezone} />
-              <InfoItem icon={DollarSign} label="Currency" value={userProfile.currency} />
+              <InfoItem icon={Briefcase} label="Occupation" value={profile.occupation} />
+              <InfoItem icon={MapPin} label="Location" value={`${profile.city}, ${profile.country ?? "Not specified"}`} />
+              <InfoItem icon={Clock} label="Timezone" value={profile.timezone} />
+              <InfoItem icon={DollarSign} label="Currency" value={profile.currency}/>
             </div>
           </Card>
 
@@ -112,21 +212,21 @@ export default function ProfilePage() {
           {/* Bio & Social Links */}
           <Card className="p-5">
             <h3 className="mb-3 font-display text-base font-semibold">Bio</h3>
-            <p className="text-sm leading-relaxed text-muted-foreground">{userProfile.bio}</p>
+            <p className="text-sm leading-relaxed text-muted-foreground">{profile.bio}</p>
             <div className="mt-4 flex flex-wrap gap-2">
-              {userProfile.socialLinks.linkedin && (
-                <a href={`https://${userProfile.socialLinks.linkedin}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-                  <Linkedin className="h-3.5 w-3.5" /> {userProfile.socialLinks.linkedin}
+              {profile.socialLinks.linkedin && (
+                <a href={`https://${profile.socialLinks.linkedin}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+                  <Linkedin className="h-3.5 w-3.5" /> {profile.socialLinks.linkedin}
                 </a>
               )}
-              {userProfile.socialLinks.github && (
-                <a href={`https://${userProfile.socialLinks.github}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-                  <Github className="h-3.5 w-3.5" /> {userProfile.socialLinks.github}
+              {profile.socialLinks.github && (
+                <a href={`https://${profile.socialLinks.github}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+                  <Github className="h-3.5 w-3.5" /> {profile.socialLinks.github}
                 </a>
               )}
-              {userProfile.socialLinks.website && (
-                <a href={`https://${userProfile.socialLinks.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-                  <Globe className="h-3.5 w-3.5" /> {userProfile.socialLinks.website}
+              {profile.socialLinks.website && (
+                <a href={`https://${profile.socialLinks.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+                  <Globe className="h-3.5 w-3.5" /> {profile.socialLinks.website}
                 </a>
               )}
             </div>
@@ -161,11 +261,11 @@ export default function ProfilePage() {
             <div className="space-y-2 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Email</span>
-                <span className="font-medium">{userProfile.email}</span>
+                <span className="font-medium">{profile.email}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Phone</span>
-                <span className="font-medium">{userProfile.phone}</span>
+                <span className="font-medium">{profile.phone ?? "Not provided"}</span>
               </div>
             </div>
           </Card>
