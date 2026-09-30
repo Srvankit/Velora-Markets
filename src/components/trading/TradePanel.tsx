@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RotateCcw, Info, Zap } from 'lucide-react';
+import { RotateCcw, Info, Zap, ArrowRightLeft } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,8 +9,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { OrderSide, OrderType, OrderValidity, ProductType } from '@/types/trading';
-import { calculateCharges, calculateTotal, formatOrderType, formatProductType } from '@/lib/trading-calc';
-import { formatCurrency } from '@/lib/format';
+import { calculateCharges, calculateTotal } from '@/lib/trading-calc';
+import { useAuth } from '@/contexts/auth-context';
+import { formatCurrency, convertCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 
 interface TradePanelProps {
@@ -18,6 +19,7 @@ interface TradePanelProps {
   name: string;
   currentPrice: number;
   availableBalance: number;
+  currency?: string;
   onPreview: (order: PreviewOrderData) => void;
 }
 
@@ -48,7 +50,11 @@ const validityDescriptions: Record<OrderValidity, string> = {
   ioc: 'Immediate or Cancel: execute what is possible, cancel the rest.',
 };
 
-export function TradePanel({ symbol, name, currentPrice, availableBalance, onPreview }: TradePanelProps) {
+export function TradePanel({ symbol, name, currentPrice, availableBalance, currency = 'INR', onPreview }: TradePanelProps) {
+  const { user } = useAuth();
+  const userBaseCurrency = user?.currency || 'INR';
+  const instrumentCurrency = currency || 'INR';
+
   const [side, setSide] = useState<OrderSide>('buy');
   const [quantity, setQuantity] = useState('10');
   const [orderType, setOrderType] = useState<OrderType>('market');
@@ -59,17 +65,25 @@ export function TradePanel({ symbol, name, currentPrice, availableBalance, onPre
   const [targetPrice, setTargetPrice] = useState('');
 
   useEffect(() => {
-      setPrice(currentPrice.toFixed(2));
-    }, [currentPrice, symbol]);
+    setPrice(currentPrice.toFixed(2));
+  }, [currentPrice, symbol]);
 
-  const qty = parseInt(quantity) || 0;
-  const effectivePrice = orderType === 'market' ? currentPrice : parseFloat(price) || 0;
-  const investment = qty * effectivePrice;
-  const charges = useMemo(
-    () => calculateCharges(side, qty, effectivePrice, orderType, productType),
-    [side, qty, effectivePrice, orderType, productType],
+  const isCrossCurrency = instrumentCurrency.toUpperCase() !== userBaseCurrency.toUpperCase();
+  const fx = useMemo(
+    () => convertCurrency(1, instrumentCurrency, userBaseCurrency),
+    [instrumentCurrency, userBaseCurrency],
   );
-  const total = calculateTotal(qty, effectivePrice, charges);
+
+  const qty = parseInt(quantity, 10) || 0;
+  const effectivePrice = orderType === 'market' ? currentPrice : parseFloat(price) || 0;
+  const effectivePriceInBase = isCrossCurrency ? effectivePrice * fx.rate : effectivePrice;
+
+  const investment = qty * effectivePriceInBase;
+  const charges = useMemo(
+    () => calculateCharges(side, qty, effectivePriceInBase, orderType, productType),
+    [side, qty, effectivePriceInBase, orderType, productType],
+  );
+  const total = calculateTotal(qty, effectivePriceInBase, charges);
   const isBuy = side === 'buy';
   const insufficientFunds = isBuy && total > availableBalance;
 
@@ -106,11 +120,18 @@ export function TradePanel({ symbol, name, currentPrice, availableBalance, onPre
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-display text-base font-semibold">Place Order</h3>
-            <p className="text-xs text-muted-foreground">{symbol} \u00b7 {name}</p>
+            <p className="text-xs text-muted-foreground">{symbol} · {name}</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-muted-foreground">LTP</p>
-            <p className="font-display text-lg font-bold tabular-nums">{formatCurrency(currentPrice)}</p>
+            <p className="text-xs text-muted-foreground">LTP ({instrumentCurrency})</p>
+            <p className="font-display text-lg font-bold tabular-nums">
+              {formatCurrency(currentPrice, instrumentCurrency)}
+            </p>
+            {isCrossCurrency && (
+              <p className="text-[11px] font-medium text-primary font-mono">
+                ≈ {formatCurrency(effectivePriceInBase, userBaseCurrency)}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -135,16 +156,16 @@ export function TradePanel({ symbol, name, currentPrice, availableBalance, onPre
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Quantity</Label>
-                <Input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} min="0" className="h-9" />
+                <Input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} min="0" className="h-9 font-mono" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Price {orderType === 'market' && '(Market)'}</Label>
+                <Label className="text-xs">Price ({instrumentCurrency})</Label>
                 <Input
                   type="number"
                   value={orderType === 'market' ? currentPrice.toFixed(2) : price}
                   onChange={(e) => setPrice(e.target.value)}
                   disabled={orderType === 'market'}
-                  className="h-9"
+                  className="h-9 font-mono"
                 />
               </div>
             </div>
@@ -211,35 +232,47 @@ export function TradePanel({ symbol, name, currentPrice, availableBalance, onPre
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs">Stop Loss</Label>
-                <Input type="number" value={stopLoss} onChange={(e) => setStopLoss(e.target.value)} placeholder="Optional" className="h-9" />
+                <Label className="text-xs">Stop Loss ({instrumentCurrency})</Label>
+                <Input type="number" value={stopLoss} onChange={(e) => setStopLoss(e.target.value)} placeholder="Optional" className="h-9 font-mono" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Target Price</Label>
-                <Input type="number" value={targetPrice} onChange={(e) => setTargetPrice(e.target.value)} placeholder="Optional" className="h-9" />
+                <Label className="text-xs">Target Price ({instrumentCurrency})</Label>
+                <Input type="number" value={targetPrice} onChange={(e) => setTargetPrice(e.target.value)} placeholder="Optional" className="h-9 font-mono" />
               </div>
             </div>
 
             {/* Summary */}
             <div className="space-y-1.5 rounded-lg border border-border bg-card/40 p-3 text-xs">
+              {isCrossCurrency && (
+                <div className="flex items-center justify-between text-[11px] text-primary pb-1 border-b border-border/50">
+                  <span className="flex items-center gap-1">
+                    <ArrowRightLeft className="h-3 w-3" /> FX Conversion Rate
+                  </span>
+                  <span className="font-mono font-semibold">1 {instrumentCurrency} = {formatCurrency(fx.rate, userBaseCurrency)}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Investment</span>
-                <span className="font-medium tabular-nums">{formatCurrency(investment)}</span>
+                <span className="text-muted-foreground">Investment ({userBaseCurrency})</span>
+                <span className="font-medium tabular-nums">{formatCurrency(investment, userBaseCurrency)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Charges</span>
-                <span className="font-medium tabular-nums">{formatCurrency(charges.total)}</span>
+                <span className="text-muted-foreground">Charges ({userBaseCurrency})</span>
+                <span className="font-medium tabular-nums">{formatCurrency(charges.total, userBaseCurrency)}</span>
               </div>
               <div className="flex items-center justify-between border-t border-border pt-1.5">
-                <span className="font-semibold">{isBuy ? 'Total Cost' : 'Net Proceeds'}</span>
-                <span className={cn('font-bold tabular-nums', insufficientFunds && 'text-danger')}>{formatCurrency(total)}</span>
+                <span className="font-semibold">{isBuy ? 'Total Cost' : 'Net Proceeds'} ({userBaseCurrency})</span>
+                <span className={cn('font-bold tabular-nums', insufficientFunds && 'text-danger')}>
+                  {formatCurrency(total, userBaseCurrency)}
+                </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Available Balance</span>
-                <span className={cn('font-medium tabular-nums', insufficientFunds && 'text-danger')}>{formatCurrency(availableBalance)}</span>
+                <span className="text-muted-foreground">Available Buying Power</span>
+                <span className={cn('font-medium tabular-nums', insufficientFunds && 'text-danger')}>
+                  {formatCurrency(availableBalance, userBaseCurrency)}
+                </span>
               </div>
               {insufficientFunds && (
-                <p className="text-danger">Insufficient balance for this order.</p>
+                <p className="text-danger font-medium pt-1">Insufficient virtual balance for this order.</p>
               )}
             </div>
 

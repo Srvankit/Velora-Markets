@@ -25,7 +25,7 @@ public class DefaultMarketDataProvider implements MarketDataProvider {
 
     @Override
     public String getProviderName() {
-        return "Velora Institutional Market Engine";
+        return "Velora Institutional Market Engine (Stored Reference)";
     }
 
     @Override
@@ -36,7 +36,13 @@ public class DefaultMarketDataProvider implements MarketDataProvider {
     @Override
     public MarketStockResponse fetchLiveQuote(Stock stock) {
         MarketStockResponse response = mapper.toMarketStock(stock);
-        response.setMarketStatus(MarketStatus.LIVE.name());
+        MarketStatus currentHourStatus = FmpMarketDataProvider.determineMarketStatus(stock.getExchange());
+        if (currentHourStatus == MarketStatus.MARKET_CLOSED) {
+            response.setMarketStatus(MarketStatus.MARKET_CLOSED.name());
+        } else {
+            // When live provider data is not available, clearly label as DELAYED rather than inventing fake LIVE
+            response.setMarketStatus(MarketStatus.DELAYED.name());
+        }
         return response;
     }
 
@@ -53,7 +59,7 @@ public class DefaultMarketDataProvider implements MarketDataProvider {
         List<HistoricalBarResponse> bars = new ArrayList<>();
         LocalDate today = LocalDate.now();
 
-        // Generate deterministic history anchoring to the stock's actual price
+        // Historical reference bars anchoring to canonical stock prices
         int symbolHash = Math.abs(stock.getSymbol().hashCode());
         double trend = (current - prev) / (points > 1 ? points : 1);
 

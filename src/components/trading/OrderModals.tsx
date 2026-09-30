@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, X, AlertCircle, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { CheckCircle2, AlertCircle, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ChargesBreakdown } from '@/components/trading/ChargesBreakdown';
 import type { TradeOrder } from '@/types/trading';
-import { formatCurrency } from '@/lib/format';
+import { useAuth } from '@/contexts/auth-context';
+import { formatCurrency } from '@/lib/currency';
 import { formatOrderType, formatProductType } from '@/lib/trading-calc';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +26,8 @@ interface OrderPreviewModalProps {
 }
 
 export function OrderPreviewModal({ open, onOpenChange, order, onConfirm, loading }: OrderPreviewModalProps) {
+  const { user } = useAuth();
+  const userCurrency = user?.currency || 'INR';
   const [confirmed, setConfirmed] = useState(false);
 
   if (!order) return null;
@@ -63,7 +66,7 @@ export function OrderPreviewModal({ open, onOpenChange, order, onConfirm, loadin
 
           <div className="grid grid-cols-2 gap-3 text-sm">
             <DetailRow label="Quantity" value={`${order.quantity} shares`} />
-            <DetailRow label="Price" value={formatCurrency(order.price)} />
+            <DetailRow label="Unit Price" value={formatCurrency(order.price, userCurrency)} />
             <DetailRow label="Order Type" value={formatOrderType(order.orderType)} />
             <DetailRow label="Product" value={formatProductType(order.productType)} />
           </div>
@@ -81,7 +84,7 @@ export function OrderPreviewModal({ open, onOpenChange, order, onConfirm, loadin
               checked={confirmed}
               onCheckedChange={(v) => setConfirmed(v === true)}
             />
-            <label htmlFor="confirm" className="text-xs text-muted-foreground">
+            <label htmlFor="confirm" className="text-xs text-muted-foreground cursor-pointer">
               I confirm that I have reviewed this order and accept the charges shown above.
             </label>
           </div>
@@ -95,7 +98,7 @@ export function OrderPreviewModal({ open, onOpenChange, order, onConfirm, loadin
               disabled={!confirmed || loading}
               onClick={onConfirm}
             >
-              {loading ? 'Placing\u2026' : 'Confirm Order'}
+              {loading ? 'Placing…' : 'Confirm Order'}
               {!loading && <ArrowRight className="h-4 w-4" />}
             </Button>
           </div>
@@ -124,8 +127,11 @@ interface SuccessModalProps {
 }
 
 export function SuccessModal({ open, onOpenChange, order, onContinueTrading, onViewOrders, onDashboard }: SuccessModalProps) {
+  const { user } = useAuth();
+  const userCurrency = user?.currency || 'INR';
+
   if (!order) return null;
-  const execTime = order.executedAt ? new Date(order.executedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '\u2014';
+  const execTime = order.executedAt ? new Date(order.executedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -165,7 +171,7 @@ export function SuccessModal({ open, onOpenChange, order, onContinueTrading, onV
             </div>
             <div className="flex items-center justify-between border-t border-border pt-2">
               <span className="font-medium">Total</span>
-              <span className="font-bold tabular-nums">{formatCurrency(order.total)}</span>
+              <span className="font-bold tabular-nums">{formatCurrency(order.total, userCurrency)}</span>
             </div>
           </div>
           <div className="flex w-full flex-col gap-2">

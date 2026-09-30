@@ -212,6 +212,53 @@ export interface BackendSubscription {
   message: string;
 }
 
+export interface BackendBadgeResponse {
+  badgeCode: string;
+  badgeName: string;
+  description: string;
+  icon: string;
+  unlockedAt: string;
+}
+
+export interface BackendRedemptionResponse {
+  id: number;
+  coinsRedeemed: number;
+  currencyAmount: number;
+  currency: string;
+  status: 'PENDING_PAYOUT' | 'APPROVED' | 'REJECTED' | 'PROCESSED' | string;
+  payoutMethod?: string;
+  payoutDestination?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface BackendAcademyOverview {
+  coinsBalance: number;
+  totalLessonsCompleted: number;
+  completedLessonIds: string[];
+  quizScores: Record<string, number>;
+  badges: BackendBadgeResponse[];
+  recentRedemptions: BackendRedemptionResponse[];
+}
+
+export interface BackendQuizResult {
+  quizId: string;
+  score: number;
+  passed: boolean;
+  coinsAwarded: number;
+  totalCoins: number;
+  newBadges: BackendBadgeResponse[];
+}
+
+export interface BackendRewardHistoryItem {
+  id: number;
+  amount: number;
+  balanceAfter: number;
+  type: string;
+  description: string;
+  createdAt: string;
+}
+
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data as { message?: string; error?: string; errors?: Record<string, string> } | undefined;
@@ -371,4 +418,37 @@ export const backendApi = {
 
   placeOrder: (data: { symbol: string; side: 'BUY' | 'SELL'; orderType: 'MARKET'; quantity: number }) =>
     apiRequest<BackendOrderExecution>({ method: 'POST', url: '/trading/orders', data }),
+
+  academyOverview: () =>
+    apiRequest<BackendAcademyOverview>({
+      method: 'GET',
+      url: '/academy/overview',
+    }),
+
+  completeLesson: (data: { lessonId: string; courseId: string }) =>
+    apiRequest<BackendAcademyOverview>({
+      method: 'POST',
+      url: '/academy/lessons/complete',
+      data,
+    }),
+
+  submitQuiz: (data: { quizId: string; courseId: string; score: number; passed: boolean }) =>
+    apiRequest<BackendQuizResult>({
+      method: 'POST',
+      url: '/academy/quizzes/submit',
+      data,
+    }),
+
+  redeemCoins: (data: { coins: number; payoutMethod?: string; payoutDestination?: string; notes?: string }) =>
+    apiRequest<BackendRedemptionResponse>({
+      method: 'POST',
+      url: '/academy/redeem',
+      data,
+    }),
+
+  rewardHistory: () =>
+    apiRequest<BackendRewardHistoryItem[]>({
+      method: 'GET',
+      url: '/academy/rewards/history',
+    }),
 };
