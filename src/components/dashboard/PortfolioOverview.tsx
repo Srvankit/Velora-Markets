@@ -4,6 +4,8 @@ import { Wallet, TrendingUp, Zap, Briefcase } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { AnimatedCounter } from '@/components/common/AnimatedCounter';
 import { backendApi, type BackendPortfolio } from '@/services/backend';
+import { useAuth } from '@/contexts/auth-context';
+import { getCurrencySymbol, formatCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 
 const accentClasses = {
@@ -14,6 +16,9 @@ const accentClasses = {
 };
 
 export function PortfolioOverview() {
+  const { user } = useAuth();
+  const currency = user?.currency || 'INR';
+  const currencySymbol = getCurrencySymbol(currency);
   const [portfolio, setPortfolio] = useState<BackendPortfolio | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -51,7 +56,7 @@ export function PortfolioOverview() {
       value: portfolio.totalAccountValue,
       icon: Wallet,
       accent: 'primary' as const,
-      trend: `Total P&L: ${portfolio.totalPnL >= 0 ? '+' : ''}$${portfolio.totalPnL.toFixed(2)}`,
+      trend: `Total P&L: ${portfolio.totalPnL >= 0 ? '+' : ''}${formatCurrency(portfolio.totalPnL, currency)}`,
       positive: portfolio.totalPnL >= 0,
     },
     {
@@ -102,7 +107,7 @@ export function PortfolioOverview() {
                   <p className="font-display text-2xl font-bold tracking-tight">
                     <AnimatedCounter
                       value={stat.value}
-                      prefix="$"
+                      prefix={currencySymbol}
                       decimals={2}
                     />
                   </p>

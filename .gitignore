@@ -12,6 +12,14 @@ dist
 dist-ssr
 *.local
 .env
+*.tsbuildinfo
+
+# Backend
+backend/target/
+backend/data/
+backend/*.db
+backend/*.mv.db
+backend/*.trace.db
 
 # Editor directories and files
 .vscode/*

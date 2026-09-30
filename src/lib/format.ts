@@ -5,13 +5,15 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(value: number, currency = 'USD', compact = false): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    notation: compact ? 'compact' : 'standard',
-    maximumFractionDigits: compact ? 2 : 2,
-  }).format(value);
+import { formatCurrency as formatCurrencyLib } from './currency';
+
+export function formatCurrency(
+  value: number,
+  currency = 'INR',
+  compactOrOptions: boolean | { compact?: boolean; decimals?: number; showCode?: boolean } = false,
+): string {
+  const options = typeof compactOrOptions === 'boolean' ? { compact: compactOrOptions } : compactOrOptions;
+  return formatCurrencyLib(value, currency, options);
 }
 
 export function formatNumber(value: number, compact = false): string {

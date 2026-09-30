@@ -3,7 +3,8 @@ import { TrendingUp, TrendingDown } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { AnimatedCounter } from '@/components/common/AnimatedCounter';
 import type { MarketStock } from '@/data/stocks';
-import { formatCurrency, formatNumber } from '@/lib/format';
+import { formatCurrency, getCurrencySymbol } from '@/lib/currency';
+import { formatNumber } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 interface PriceCardProps {
@@ -12,21 +13,24 @@ interface PriceCardProps {
 
 export function PriceCard({ stock }: PriceCardProps) {
   const positive = stock.change >= 0;
-  const afterHours = stock.price + (Math.random() - 0.5) * stock.price * 0.003;
-  const open = stock.price - stock.change;
-  const high = Math.max(open, stock.price) * 1.012;
-  const low = Math.min(open, stock.price) * 0.988;
+  const currency = stock.currency || 'INR';
+  const currencySymbol = getCurrencySymbol(currency);
+  const prevClose = stock.previousClose ?? (stock.price - stock.change);
+  const open = stock.open ?? prevClose;
+  const high = stock.high ?? Math.max(stock.price, open);
+  const low = stock.low ?? Math.min(stock.price, open);
 
   const stats = [
-    { label: 'After Hours', value: `$${afterHours.toFixed(2)}` },
-    { label: 'Previous Close', value: `$${(stock.price - stock.change).toFixed(2)}` },
-    { label: 'Open', value: `$${open.toFixed(2)}` },
-    { label: 'High', value: `$${high.toFixed(2)}` },
-    { label: 'Low', value: `$${low.toFixed(2)}` },
+    { label: 'Previous Close', value: formatCurrency(prevClose, currency) },
+    { label: 'Open', value: formatCurrency(open, currency) },
+    { label: 'Day High', value: formatCurrency(high, currency) },
+    { label: 'Day Low', value: formatCurrency(low, currency) },
     { label: 'Volume', value: formatNumber(stock.volume, true) },
-    { label: '52W High', value: stock.week52High ? `$${stock.week52High.toFixed(2)}` : '\u2014' },
-    { label: '52W Low', value: stock.week52Low ? `$${stock.week52Low.toFixed(2)}` : '\u2014' },
+    { label: '52W High', value: stock.week52High ? formatCurrency(stock.week52High, currency) : '—' },
+    { label: '52W Low', value: stock.week52Low ? formatCurrency(stock.week52Low, currency) : '—' },
     { label: 'Market Cap', value: formatNumber(stock.marketCap, true) },
+    { label: 'Exchange', value: stock.exchange },
+    { label: 'Status', value: stock.marketStatus || 'LIVE' },
   ];
 
   return (
@@ -35,7 +39,7 @@ export function PriceCard({ stock }: PriceCardProps) {
         <div className="space-y-2">
           <div className="flex items-end gap-3">
             <span className="font-display text-4xl font-bold tracking-tight">
-              <AnimatedCounter value={stock.price} prefix="$" decimals={2} duration={1.2} />
+              <AnimatedCounter value={stock.price} prefix={currencySymbol} decimals={2} duration={1.2} />
             </span>
             <span
               className={cn(
@@ -44,11 +48,11 @@ export function PriceCard({ stock }: PriceCardProps) {
               )}
             >
               {positive ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-              {positive ? '+' : ''}{stock.change.toFixed(2)} ({positive ? '+' : ''}{stock.changePercent.toFixed(2)}%)
+              {positive ? '+' : ''}{formatCurrency(stock.change, currency)} ({positive ? '+' : ''}{stock.changePercent.toFixed(2)}%)
             </span>
           </div>
           <p className="text-xs text-muted-foreground">
-            {positive ? 'Up' : 'Down'} today \u00b7 Updated {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+            {positive ? 'Up' : 'Down'} today · Updated {stock.timestamp ? new Date(stock.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString()}
           </p>
         </div>
       </div>

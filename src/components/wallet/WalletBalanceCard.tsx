@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion';
-import { Wallet, ArrowUpRight, ArrowDownRight, Lock, TrendingUp, Gift } from 'lucide-react';
+import { Wallet, ArrowUpRight, Lock, TrendingUp, Gift } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { AnimatedCounter } from '@/components/common/AnimatedCounter';
-import { formatCurrency } from '@/lib/format';
+import { useAuth } from '@/contexts/auth-context';
+import { formatCurrency, getCurrencySymbol } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 
 interface WalletBalanceCardProps {
@@ -22,6 +23,10 @@ export function WalletBalanceCard({
   profitAvailable,
   rewardsBalance,
 }: WalletBalanceCardProps) {
+  const { user } = useAuth();
+  const currency = user?.currency || 'INR';
+  const currencySymbol = getCurrencySymbol(currency);
+
   const items = [
     { icon: TrendingUp, label: 'Buying Power', value: buyingPower, color: 'text-primary' },
     { icon: Lock, label: 'Blocked', value: blockedAmount, color: 'text-warning' },
@@ -41,7 +46,7 @@ export function WalletBalanceCard({
           <div>
             <p className="text-sm font-medium text-muted-foreground">Wallet Balance</p>
             <p className="font-display text-3xl font-bold tracking-tight">
-              <AnimatedCounter value={balance} prefix="$" decimals={2} duration={1.5} />
+              <AnimatedCounter value={balance} prefix={currencySymbol} decimals={2} duration={1.5} />
             </p>
           </div>
         </div>
@@ -60,7 +65,7 @@ export function WalletBalanceCard({
                 {item.label}
               </div>
               <p className={cn('text-sm font-semibold tabular-nums', item.color)}>
-                {formatCurrency(item.value, 'USD', true)}
+                {formatCurrency(item.value, currency)}
               </p>
             </motion.div>
           ))}

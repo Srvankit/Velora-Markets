@@ -36,9 +36,12 @@ export const NAV_LINKS = [
 export const SIDEBAR_LINKS = [
   { label: 'Dashboard', href: '/dashboard', icon: 'LayoutDashboard' },
   { label: 'Markets', href: '/markets', icon: 'CandlestickChart' },
+  { label: 'Trade', href: '/trade', icon: 'TrendingUp' },
   { label: 'Portfolio', href: '/portfolio', icon: 'Briefcase' },
   { label: 'Wallet', href: '/wallet', icon: 'Wallet' },
   { label: 'Watchlist', href: '/watchlist', icon: 'Star' },
+  { label: 'Academy', href: '/study', icon: 'GraduationCap' },
+  { label: 'Billing', href: '/billing', icon: 'Crown' },
   { label: 'Transactions', href: '/transactions', icon: 'Receipt' },
   { label: 'Notifications', href: '/notifications', icon: 'Bell' },
 ] as const;

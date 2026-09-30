@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/common/EmptyState';
 
 import { PriceCard } from '@/components/stock/PriceCard';
-import { StockChart } from '@/components/stock/StockChart';
+import { TradingViewChart } from '@/components/charts/TradingViewChart';
 import { CompanyOverview } from '@/components/stock/CompanyOverview';
 import { FinancialHighlights } from '@/components/stock/FinancialHighlights';
 import { AnalystRatingCard } from '@/components/stock/AnalystRatingCard';
@@ -485,9 +485,14 @@ export default function StockDetailPage() {
 
           <PriceCard stock={stock} />
 
-          <StockChart
+          <TradingViewChart
             symbol={stock.symbol}
-            basePrice={stock.price}
+            companyName={stock.name}
+            exchange={stock.exchange}
+            currentPrice={stock.price}
+            previousClose={stock.previousClose}
+            currency={stock.currency || 'INR'}
+            marketStatus={stock.marketStatus || 'LIVE'}
           />
 
         </div>
@@ -530,6 +535,7 @@ export default function StockDetailPage() {
 
         <FinancialHighlights
           financials={financials}
+          currency={stock.currency || 'INR'}
         />
 
       </div>

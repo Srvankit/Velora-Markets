@@ -5,11 +5,15 @@ import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AnimatedCounter } from '@/components/common/AnimatedCounter';
 import { useTrading } from '@/contexts/trading-context';
-import { formatCurrency, formatNumber } from '@/lib/format';
+import { useAuth } from '@/contexts/auth-context';
+import { formatCurrency, getCurrencySymbol } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 
 export function HoldingTable() {
   const { holdings, totalHoldingsValue, todayProfit, overallReturn } = useTrading();
+  const { user } = useAuth();
+  const currency = user?.currency || 'INR';
+  const currencySymbol = getCurrencySymbol(currency);
   const navigate = useNavigate();
 
   const enriched = useMemo(() => {
@@ -28,9 +32,9 @@ export function HoldingTable() {
     <div className="space-y-4">
       {/* Summary cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <SummaryCard label="Total Holdings Value" value={totalHoldingsValue} prefix="$" />
-        <SummaryCard label="Today's Profit" value={todayProfit} prefix="$" positive={todayProfit >= 0} />
-        <SummaryCard label="Overall Return" value={overallReturn} prefix="$" positive={overallReturn >= 0} />
+        <SummaryCard label="Total Holdings Value" value={totalHoldingsValue} prefix={currencySymbol} />
+        <SummaryCard label="Today's Profit" value={todayProfit} prefix={currencySymbol} positive={todayProfit >= 0} />
+        <SummaryCard label="Overall Return" value={overallReturn} prefix={currencySymbol} positive={overallReturn >= 0} />
       </div>
 
       {/* Table */}

@@ -2,7 +2,8 @@ import { motion } from 'framer-motion';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { Card } from '@/components/ui/card';
 import { assetAllocation } from '@/data/portfolio';
-import { formatCurrency } from '@/lib/format';
+import { useAuth } from '@/contexts/auth-context';
+import { formatCurrency } from '@/lib/currency';
 
 const tooltipStyle = {
   backgroundColor: 'hsl(var(--card))',
@@ -12,6 +13,10 @@ const tooltipStyle = {
 };
 
 export function AllocationChart() {
+  const { user } = useAuth();
+  const currency = user?.currency || 'INR';
+  const totalValue = assetAllocation.reduce((sum, item) => sum + item.value, 0);
+
   return (
     <Card className="p-5">
       <h3 className="mb-4 font-display text-base font-semibold">Asset Allocation</h3>
@@ -34,13 +39,13 @@ export function AllocationChart() {
               </Pie>
               <Tooltip
                 contentStyle={tooltipStyle}
-                formatter={(v: number, n: string) => [formatCurrency(v), n]}
+                formatter={(v: number, n: string) => [formatCurrency(v, currency), n]}
               />
             </PieChart>
           </ResponsiveContainer>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-xs text-muted-foreground">Total</span>
-            <span className="font-display text-sm font-bold">$27.8K</span>
+            <span className="font-display text-sm font-bold">{formatCurrency(totalValue, currency, { compact: true })}</span>
           </div>
         </div>
         <div className="space-y-2">
@@ -57,7 +62,7 @@ export function AllocationChart() {
                 <span className="text-xs font-medium">{item.name}</span>
               </div>
               <div className="flex items-center gap-3 text-xs">
-                <span className="text-muted-foreground">{formatCurrency(item.value, 'USD', true)}</span>
+                <span className="text-muted-foreground">{formatCurrency(item.value, currency, { compact: true })}</span>
                 <span className="w-10 text-right font-semibold tabular-nums">{item.percentage.toFixed(1)}%</span>
               </div>
             </motion.div>

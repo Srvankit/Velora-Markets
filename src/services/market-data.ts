@@ -5,7 +5,7 @@ function buildSparkline(
   existing: number[],
   currentPrice: number,
 ): number[] {
-  if (!existing.length) {
+  if (!existing || !existing.length) {
     return [currentPrice];
   }
 
@@ -29,38 +29,49 @@ export function mergeMarketStock(
       backendStock.symbol.toUpperCase(),
   );
 
+  const prevClose = backendStock.previousClose ?? (backendStock.price - backendStock.change);
+
   if (!local) {
     return {
       symbol: backendStock.symbol,
-      name: backendStock.companyName,
-      exchange: backendStock.exchange,
-      sector: backendStock.sector,
+      name: backendStock.companyName || backendStock.symbol,
+      exchange: backendStock.exchange || 'NSE',
+      sector: backendStock.sector || 'Equities',
+      currency: backendStock.currency || (backendStock.exchange === 'NASDAQ' || backendStock.exchange === 'NYSE' ? 'USD' : 'INR'),
       price: backendStock.price,
       change: backendStock.change,
       changePercent: backendStock.changePercent,
       volume: backendStock.volume,
-
+      open: backendStock.open ?? prevClose,
+      high: backendStock.high ?? Math.max(backendStock.price, prevClose),
+      low: backendStock.low ?? Math.min(backendStock.price, prevClose),
+      previousClose: prevClose,
+      marketStatus: backendStock.marketStatus ?? 'LIVE',
+      timestamp: backendStock.timestamp,
       marketCap: 0,
-      sparkline: [backendStock.previousClose, backendStock.price],
-      logoColor: '#64748B',
+      sparkline: [prevClose, backendStock.price],
+      logoColor: '#6366F1',
       capSize: 'Large Cap',
     };
   }
 
   return {
     ...local,
-
-    // Backend is authoritative for live/simulated market fields
     symbol: backendStock.symbol,
-    name: backendStock.companyName,
-    exchange: backendStock.exchange,
-    sector: backendStock.sector,
+    name: backendStock.companyName || local.name,
+    exchange: backendStock.exchange || local.exchange,
+    sector: backendStock.sector || local.sector,
+    currency: backendStock.currency || local.currency,
     price: backendStock.price,
     change: backendStock.change,
     changePercent: backendStock.changePercent,
     volume: backendStock.volume,
-
-    // Keep visual chart compatible with backend price
+    open: backendStock.open ?? local.open ?? prevClose,
+    high: backendStock.high ?? local.high ?? Math.max(backendStock.price, prevClose),
+    low: backendStock.low ?? local.low ?? Math.min(backendStock.price, prevClose),
+    previousClose: prevClose,
+    marketStatus: backendStock.marketStatus ?? local.marketStatus ?? 'LIVE',
+    timestamp: backendStock.timestamp,
     sparkline: buildSparkline(
       local.sparkline,
       backendStock.price,

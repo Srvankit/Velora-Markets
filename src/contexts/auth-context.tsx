@@ -3,6 +3,7 @@ import type { AuthSession, AuthUser, ProfileSetupData } from '@/types';
 import { AUTH_STORAGE_KEY } from '@/constants';
 import { backendApi, getApiErrorMessage, type BackendAuthResponse, type BackendUserResponse } from '@/services/backend';
 import { sleep } from '@/lib/format';
+import { getCurrencyForCountry } from '@/lib/currency';
 
 interface AuthContextValue {
   user: AuthUser | null; token: string | null; isAuthenticated: boolean; isLoading: boolean;
@@ -19,14 +20,32 @@ function readSession(): AuthSession | null { try { const raw = localStorage.getI
 function persistSession(session: AuthSession | null) { if (session) localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session)); else localStorage.removeItem(AUTH_STORAGE_KEY); }
 function toUser(data: BackendUserResponse | BackendAuthResponse, previous?: AuthUser | null): AuthUser {
   const isMe = 'id' in data;
+  const country = (data.country && data.country.trim()) || previous?.country || undefined;
+  const currency = (data.currency && data.currency.trim()) || previous?.currency || getCurrencyForCountry(country);
+  const subscriptionTier = (data.subscriptionTier && data.subscriptionTier.trim()) || previous?.subscriptionTier || 'STANDARD';
+  const subscriptionStatus = ('subscriptionStatus' in data && data.subscriptionStatus ? data.subscriptionStatus : previous?.subscriptionStatus || 'ACTIVE');
   return {
-    id: String(isMe ? data.id : data.userId), name: isMe ? data.fullName : data.fullName, email: data.email, username: data.username,
-    phone: isMe ? data.phone ?? undefined : previous?.phone, country: isMe ? data.country ?? undefined : previous?.country,
-    avatar: previous?.avatar, currency: previous?.currency ?? 'INR', timezone: previous?.timezone,
-    investmentExperience: previous?.investmentExperience, riskProfile: previous?.riskProfile, occupation: previous?.occupation,
-    annualIncomeRange: previous?.annualIncomeRange, investmentGoals: previous?.investmentGoals, preferredMarkets: previous?.preferredMarkets,
-    kycStatus: previous?.kycStatus ?? 'unverified', emailVerified: isMe ? data.emailVerified : previous?.emailVerified ?? false,
-    profileCompleted: previous?.profileCompleted ?? true, createdAt: previous?.createdAt ?? new Date().toISOString(),
+    id: String(isMe ? data.id : data.userId),
+    name: data.fullName,
+    email: data.email,
+    username: data.username,
+    phone: isMe ? (data.phone ?? undefined) : (previous?.phone),
+    country,
+    currency,
+    subscriptionTier,
+    subscriptionStatus,
+    avatar: previous?.avatar,
+    timezone: previous?.timezone,
+    investmentExperience: previous?.investmentExperience,
+    riskProfile: previous?.riskProfile,
+    occupation: previous?.occupation,
+    annualIncomeRange: previous?.annualIncomeRange,
+    investmentGoals: previous?.investmentGoals,
+    preferredMarkets: previous?.preferredMarkets,
+    kycStatus: previous?.kycStatus ?? 'unverified',
+    emailVerified: isMe ? data.emailVerified : previous?.emailVerified ?? false,
+    profileCompleted: previous?.profileCompleted ?? true,
+    createdAt: previous?.createdAt ?? new Date().toISOString(),
   };
 }
 

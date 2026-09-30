@@ -6,6 +6,9 @@ export interface BackendAuthResponse {
   fullName: string;
   username: string;
   email: string;
+  country?: string | null;
+  currency?: string | null;
+  subscriptionTier?: string | null;
   role: string;
   token: string | null;
   tokenType: string | null;
@@ -19,6 +22,9 @@ export interface BackendUserResponse {
   email: string;
   phone?: string | null;
   country?: string | null;
+  currency?: string | null;
+  subscriptionTier?: string | null;
+  subscriptionStatus?: string | null;
   role: string;
   emailVerified: boolean;
 }
@@ -26,8 +32,9 @@ export interface BackendUserResponse {
 export interface UpdateUserRequest {
   fullName: string;
   username: string;
-  phone: string;
-  country: string;
+  phone?: string;
+  country?: string;
+  currency?: string;
 }
 
 export interface ChangePasswordRequest {
@@ -75,20 +82,16 @@ export interface BackendWatchlistItem {
 
 export interface BackendDashboard {
   cashBalance: number;
-
   investedValue: number;
   marketValue: number;
   totalAccountValue: number;
-
   unrealizedPnL: number;
   realizedPnL: number;
   totalPnL: number;
   returnPercentage: number;
-
   totalHoldings: number;
   totalOrders: number;
   totalTransactions: number;
-
   topHoldings: unknown[];
   recentOrders: unknown[];
   recentTransactions: unknown[];
@@ -143,9 +146,70 @@ export interface BackendMarketStock {
   previousClose: number;
   change: number;
   changePercent: number;
+  open?: number;
+  high?: number;
+  low?: number;
   volume: number;
   exchange: 'NSE' | 'BSE' | 'NASDAQ' | 'NYSE';
   sector: string;
+  currency?: string;
+  marketStatus?: 'LIVE' | 'DELAYED' | 'MARKET_CLOSED' | 'DATA_UNAVAILABLE' | string;
+  timestamp?: string;
+}
+
+export interface BackendHistoricalBar {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export interface BackendWalletLedger {
+  id: number;
+  userId: number;
+  type: 'INITIAL_CAPITAL' | 'BUY' | 'SELL' | 'FEE' | 'ADJUSTMENT' | string;
+  amount: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  referenceId: string | null;
+  description: string;
+  status: string;
+  timestamp: string;
+}
+
+export interface BackendWalletSummary {
+  availableCash: number;
+  investedValue: number;
+  totalPortfolioValue: number;
+  totalVirtualCapital: number;
+  currency: string;
+  recentLedger: BackendWalletLedger[];
+}
+
+export interface BackendBillingPlan {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  currency: string;
+  billingInterval: string;
+  virtualCapitalBonus: number;
+  features: string[];
+  popular?: boolean;
+  current?: boolean;
+}
+
+export interface BackendSubscription {
+  planId: string;
+  planName: string;
+  status: string;
+  billingInterval: string;
+  price: number;
+  currency: string;
+  renewalDate: string;
+  message: string;
 }
 
 export function getApiErrorMessage(error: unknown, fallback: string): string {
@@ -172,98 +236,139 @@ export interface BackendPage<T> {
 }
 
 export const backendApi = {
-  register: (data: { fullName: string; username: string; email: string; phone?: string; country?: string; password: string }) =>
+  register: (data: { fullName: string; username: string; email: string; phone?: string; country?: string; currency?: string; password: string }) =>
     apiRequest<BackendAuthResponse>({ method: 'POST', url: '/auth/register', data }),
   login: (email: string, password: string) =>
     apiRequest<BackendAuthResponse>({ method: 'POST', url: '/auth/login', data: { email, password } }),
   me: () => apiRequest<BackendUserResponse>({ method: 'GET', url: '/users/me' }),
   portfolio: () => apiRequest<BackendPortfolio>({ method: 'GET', url: '/portfolio' }),
   orders: (page = 0, size = 20) =>
-  apiRequest<BackendPage<BackendOrder>>({
-    method: 'GET',
-    url: '/trading/orders',
-    params: { page, size },
-  }),
+    apiRequest<BackendPage<BackendOrder>>({
+      method: 'GET',
+      url: '/trading/orders',
+      params: { page, size },
+    }),
   dashboard: () =>
-  apiRequest<BackendDashboard>({
-    method: 'GET',
-    url: '/dashboard',
-  }),
+    apiRequest<BackendDashboard>({
+      method: 'GET',
+      url: '/dashboard',
+    }),
 
   changePassword: (data: ChangePasswordRequest) =>
-  apiRequest<string>({
-    method: 'POST',
-    url: '/users/change-password',
-    data,
-  }),
+    apiRequest<string>({
+      method: 'POST',
+      url: '/users/change-password',
+      data,
+    }),
 
-watchlist: () =>
-  apiRequest<BackendWatchlistItem[]>({
-    method: 'GET',
-    url: '/watchlist',
-  }),
+  watchlist: () =>
+    apiRequest<BackendWatchlistItem[]>({
+      method: 'GET',
+      url: '/watchlist',
+    }),
 
   addToWatchlist: (symbol: string) =>
-  apiRequest<BackendWatchlistItem>({
-    method: 'POST',
-    url: `/watchlist/${symbol}`,
-  }),
+    apiRequest<BackendWatchlistItem>({
+      method: 'POST',
+      url: `/watchlist/${symbol}`,
+    }),
 
-removeFromWatchlist: (symbol: string) =>
-  apiRequest<void>({
-    method: 'DELETE',
-    url: `/watchlist/${symbol}`,
-  }),
+  removeFromWatchlist: (symbol: string) =>
+    apiRequest<void>({
+      method: 'DELETE',
+      url: `/watchlist/${symbol}`,
+    }),
 
   marketStocks: () =>
-  apiRequest<BackendMarketStock[]>({
-    method: 'GET',
-    url: '/market/stocks',
-  }),
+    apiRequest<BackendMarketStock[]>({
+      method: 'GET',
+      url: '/market/stocks',
+    }),
 
-marketStock: (symbol: string) =>
-  apiRequest<BackendMarketStock>({
-    method: 'GET',
-    url: `/market/stocks/${encodeURIComponent(symbol)}`,
-  }),
+  marketStock: (symbol: string) =>
+    apiRequest<BackendMarketStock>({
+      method: 'GET',
+      url: `/market/stocks/${encodeURIComponent(symbol)}`,
+    }),
 
-searchMarketStocks: (query: string) =>
-  apiRequest<BackendMarketStock[]>({
-    method: 'GET',
-    url: '/market/search',
-    params: { query },
-  }),
+  marketStockHistory: (symbol: string, timeframe = '1M') =>
+    apiRequest<BackendHistoricalBar[]>({
+      method: 'GET',
+      url: `/market/stocks/${encodeURIComponent(symbol)}/history`,
+      params: { timeframe },
+    }),
 
-marketGainers: () =>
-  apiRequest<BackendMarketStock[]>({
-    method: 'GET',
-    url: '/market/gainers',
-  }),
+  searchMarketStocks: (query: string) =>
+    apiRequest<BackendMarketStock[]>({
+      method: 'GET',
+      url: '/market/search',
+      params: { query },
+    }),
 
-marketLosers: () =>
-  apiRequest<BackendMarketStock[]>({
-    method: 'GET',
-    url: '/market/losers',
-  }),
+  marketGainers: () =>
+    apiRequest<BackendMarketStock[]>({
+      method: 'GET',
+      url: '/market/gainers',
+    }),
 
-marketActive: () =>
-  apiRequest<BackendMarketStock[]>({
-    method: 'GET',
-    url: '/market/active',
-  }),
+  marketLosers: () =>
+    apiRequest<BackendMarketStock[]>({
+      method: 'GET',
+      url: '/market/losers',
+    }),
 
-transactions: (page = 0, size = 20) =>
-  apiRequest<BackendPage<BackendTransaction>>({
-    method: 'GET',
-    url: '/trading/transactions',
-    params: { page, size },
-  }),
-updateProfile: (data: UpdateUserRequest) =>
-  apiRequest<BackendUserResponse>({
-    method: 'PUT',
-    url: '/users/me',
-    data,
-  }),
+  marketActive: () =>
+    apiRequest<BackendMarketStock[]>({
+      method: 'GET',
+      url: '/market/active',
+    }),
+
+  transactions: (page = 0, size = 20) =>
+    apiRequest<BackendPage<BackendTransaction>>({
+      method: 'GET',
+      url: '/trading/transactions',
+      params: { page, size },
+    }),
+
+  wallet: () =>
+    apiRequest<BackendWalletSummary>({
+      method: 'GET',
+      url: '/wallet',
+    }),
+
+  walletLedger: (page = 0, size = 20) =>
+    apiRequest<BackendPage<BackendWalletLedger>>({
+      method: 'GET',
+      url: '/wallet/ledger',
+      params: { page, size },
+    }),
+
+  billingPlans: () =>
+    apiRequest<BackendBillingPlan[]>({
+      method: 'GET',
+      url: '/billing/plans',
+    }),
+
+  billingSubscription: () =>
+    apiRequest<BackendSubscription>({
+      method: 'GET',
+      url: '/billing/subscription',
+    }),
+
+  billingSubscribe: (planId: string, paymentMethodId?: string) =>
+    apiRequest<BackendSubscription>({
+      method: 'POST',
+      url: '/billing/subscribe',
+      data: { planId, paymentMethodId },
+    }),
+
+  updateProfile: (data: UpdateUserRequest) =>
+    apiRequest<BackendUserResponse>({
+      method: 'PUT',
+      url: '/users/me',
+      data,
+    }),
+
   placeOrder: (data: { symbol: string; side: 'BUY' | 'SELL'; orderType: 'MARKET'; quantity: number }) =>
     apiRequest<BackendOrderExecution>({ method: 'POST', url: '/trading/orders', data }),
 };

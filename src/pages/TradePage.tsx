@@ -49,6 +49,10 @@ import {
 
 import {
   formatCurrency,
+  getCurrencySymbol,
+} from '@/lib/currency';
+
+import {
   formatNumber,
 } from '@/lib/format';
 
@@ -550,7 +554,7 @@ export default function TradePage() {
 
                   <AnimatedCounter
                     value={stock.price}
-                    prefix="$"
+                    prefix={getCurrencySymbol(stock.currency || 'INR')}
                     decimals={2}
                   />
 
@@ -565,7 +569,7 @@ export default function TradePage() {
                   )}
                 >
                   {positive ? '+' : ''}
-                  {stock.change.toFixed(2)}
+                  {formatCurrency(stock.change, stock.currency || 'INR')}
                   {' ('}
                   {positive ? '+' : ''}
                   {stock.changePercent.toFixed(2)}

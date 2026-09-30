@@ -50,7 +50,7 @@ const cardIcons: Record<string, LucideIcon> = {
 export function PortfolioSummaryCard({
   label,
   value,
-  prefix = '$',
+  prefix = '₹',
   decimals = 2,
   change,
   changePercent,

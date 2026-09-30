@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { formatCurrency } from '@/lib/format';
+import { useAuth } from '@/contexts/auth-context';
+import { formatCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 
 interface Goal {
@@ -64,6 +65,8 @@ function getAIAnalysis(goal: Goal) {
 }
 
 export function GoalPlanner() {
+  const { user } = useAuth();
+  const currency = user?.currency || 'INR';
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newGoal, setNewGoal] = useState({ name: '', targetAmount: '', monthlyContribution: '', icon: 'Target', color: 'hsl(var(--primary))' });
@@ -115,7 +118,7 @@ export function GoalPlanner() {
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-semibold">{goal.name}</p>
-                    <p className="text-xs text-muted-foreground">{formatCurrency(goal.targetAmount, 'USD', true)} target</p>
+                    <p className="text-xs text-muted-foreground">{formatCurrency(goal.targetAmount, currency, { compact: true })} target</p>
                   </div>
                   <span className="rounded-lg px-2 py-1 text-xs font-bold" style={{ backgroundColor: `${goal.color}20`, color: goal.color }}>
                     {progress.toFixed(0)}%
@@ -133,8 +136,8 @@ export function GoalPlanner() {
                     />
                   </div>
                   <div className="mt-1.5 flex items-center justify-between text-xs">
-                    <span className="font-medium tabular-nums">{formatCurrency(goal.currentAmount, 'USD', true)}</span>
-                    <span className="text-muted-foreground">{formatCurrency(goal.targetAmount, 'USD', true)}</span>
+                    <span className="font-medium tabular-nums">{formatCurrency(goal.currentAmount, currency, { compact: true })}</span>
+                    <span className="text-muted-foreground">{formatCurrency(goal.targetAmount, currency, { compact: true })}</span>
                   </div>
                 </div>
 
@@ -147,7 +150,7 @@ export function GoalPlanner() {
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
                       <span className="text-muted-foreground">Suggested Monthly</span>
-                      <p className="font-semibold">{formatCurrency(analysis.monthlySuggestion, 'USD', true)}</p>
+                      <p className="font-semibold">{formatCurrency(analysis.monthlySuggestion, currency, { compact: true })}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Est. Completion</span>

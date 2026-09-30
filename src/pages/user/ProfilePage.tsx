@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Clock, DollarSign, Briefcase, TrendingUp, Shield, Target, Linkedin, Github, Globe, Pencil, BadgeCheck, Calendar } from 'lucide-react';
+import { MapPin, Clock, DollarSign, Briefcase, TrendingUp, Shield, Target, Linkedin, Github, Globe, Pencil, BadgeCheck, Calendar, Crown } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,7 +52,10 @@ export default function ProfilePage() {
     void loadUser();
   }, [loadUser]);
 
-    const profile = {
+  const activeTier = user?.subscriptionTier?.toUpperCase() === 'FREE' ? 'STANDARD' : (user?.subscriptionTier?.toUpperCase() || 'STANDARD');
+  const planDisplay = activeTier === 'PLUS' ? 'Plus Plan' : activeTier === 'PRO' ? 'Pro Plan' : 'Standard Plan';
+
+  const profile = {
     ...userProfile,
 
     fullName:
@@ -74,6 +77,10 @@ export default function ProfilePage() {
     country:
       user?.country ??
       userProfile.country,
+
+    currency:
+      user?.currency ??
+      'INR',
 
     verified:
       user?.emailVerified ??
@@ -109,8 +116,6 @@ export default function ProfilePage() {
       );
     }
 
-    console.log("Profile from backend:", profile);
-
   return (
     <div className="space-y-6">
       {/* Profile Header */}
@@ -135,9 +140,18 @@ export default function ProfilePage() {
                     .join("")}
                 </div>
                 <div className="sm:pb-2">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h1 className="font-display text-xl font-bold tracking-tight">{profile.fullName}</h1>
                     {profile.verified && <BadgeCheck className="h-5 w-5 text-primary" />}
+                    <Badge variant="outline" className={cn(
+                      'text-xs font-semibold uppercase tracking-wider',
+                      activeTier === 'PRO' ? 'border-primary/50 bg-primary/10 text-primary' :
+                      activeTier === 'PLUS' ? 'border-chart-2/50 bg-chart-2/10 text-chart-2' :
+                      'border-muted-foreground/30 bg-muted/40 text-muted-foreground'
+                    )}>
+                      <Crown className="h-3 w-3 mr-1" />
+                      {planDisplay}
+                    </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">{profile.username}</p>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -146,10 +160,16 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </div>
-              <Button variant="outline" size="sm" className="gap-1.5 sm:mb-2" onClick={() => navigate('/settings')}>
-                <Pencil className="h-3.5 w-3.5" />
-                Edit Profile
-              </Button>
+              <div className="flex items-center gap-2 sm:mb-2">
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate('/billing')}>
+                  <Crown className="h-3.5 w-3.5 text-primary" />
+                  Plans & Billing
+                </Button>
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate('/settings')}>
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit Profile
+                </Button>
+              </div>
             </div>
           </div>
         </Card>

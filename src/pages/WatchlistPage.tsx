@@ -21,17 +21,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { formatCurrency } from '@/lib/currency';
 
 import { cn } from '@/lib/utils';
-
-function formatMoney(value: number) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
 
 export default function WatchlistPage() {
   const navigate = useNavigate();
@@ -113,6 +105,9 @@ export default function WatchlistPage() {
 
         exchange:
           market?.exchange ?? null,
+
+        currency:
+          market?.currency || (market?.exchange === 'NASDAQ' || market?.exchange === 'NYSE' ? 'USD' : 'INR'),
 
         sector:
           market?.sector ?? null,
@@ -463,8 +458,9 @@ export default function WatchlistPage() {
                   <div className="mt-6">
 
                     <p className="font-display text-2xl font-bold tabular-nums">
-                      {formatMoney(
+                      {formatCurrency(
                         item.price,
+                        item.currency,
                       )}
                     </p>
 
@@ -488,8 +484,9 @@ export default function WatchlistPage() {
                         {positive
                           ? '+'
                           : ''}
-                        {item.change.toFixed(
-                          2,
+                        {formatCurrency(
+                          item.change,
+                          item.currency,
                         )}
                       </span>
 

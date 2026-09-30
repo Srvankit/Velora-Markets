@@ -37,23 +37,27 @@ export default function AccountCreatedPage() {
           className="w-full max-w-lg rounded-2xl border border-border bg-card/60 p-8 shadow-soft-lg backdrop-blur-xl sm:p-10"
         >
           <AuthSuccess
-            title="Account created"
+            title="Account created successfully!"
             description={
               <>
                 Welcome to Velora Markets{user?.name ? `, ${user.name.split(' ')[0]}` : ''}! Your
-                account is ready. Let's verify your email and complete your profile to get started.
+                virtual trading account is ready with{' '}
+                <strong className="text-primary">
+                  {user?.currency === 'USD' ? '$100,000' : '₹100,000'} Starting Virtual Capital
+                </strong>{' '}
+                allocated to your wallet.
               </>
             }
             action={
               <Button asChild className="w-full sm:w-auto" size="lg">
-                <Link to="/verify-email">
-                  Verify email <ArrowRight className="ml-2 h-4 w-4" />
+                <Link to="/dashboard">
+                  Enter Dashboard <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
             }
             secondaryAction={
               <Button asChild variant="outline" className="w-full sm:w-auto" size="lg">
-                <Link to="/profile-setup">Complete profile</Link>
+                <Link to="/study">Explore Academy</Link>
               </Button>
             }
           />

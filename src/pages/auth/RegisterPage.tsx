@@ -75,8 +75,8 @@ export default function RegisterPage() {
         password: data.password,
       });
       navigate('/account-created', { replace: true });
-    } catch {
-      setServerError('Unable to create your account. Please try again.');
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : 'Unable to create your account. Please try again.');
     }
   };
 

@@ -1,21 +1,56 @@
 import { motion } from 'framer-motion';
-import { UserCog, Download, LogOut, UserX, Trash2, AlertTriangle } from 'lucide-react';
+import { UserCog, Download, LogOut, UserX, Trash2, AlertTriangle, Crown, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useState } from 'react';
+import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
 
 export default function AccountPage() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [showDeactivate, setShowDeactivate] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+
+  const activeTier = user?.subscriptionTier?.toUpperCase() === 'FREE' ? 'STANDARD' : (user?.subscriptionTier?.toUpperCase() || 'STANDARD');
+  const planDisplay = activeTier === 'PLUS' ? 'Plus Plan' : activeTier === 'PRO' ? 'Pro Plan' : 'Standard Plan';
 
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">Account Management</h1>
-        <p className="text-sm text-muted-foreground">Manage your account data and session</p>
+        <p className="text-sm text-muted-foreground">Manage your account tier, data and session</p>
       </motion.div>
+
+      {/* Subscription Tier Management */}
+      <section>
+        <h2 className="mb-3 font-display text-base font-semibold">Active Plan & Subscription</h2>
+        <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Crown className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-base font-bold text-foreground">{planDisplay}</p>
+                <Badge variant="outline" className="border-success/40 bg-success/10 text-success text-[10px]">
+                  {user?.subscriptionStatus || 'ACTIVE'}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Virtual simulation platform access and analysis tools
+              </p>
+            </div>
+          </div>
+          <Button size="sm" className="gap-1.5" onClick={() => navigate('/billing')}>
+            <span>Manage Plan</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Button>
+        </Card>
+      </section>
 
       {/* Data Management */}
       <section>

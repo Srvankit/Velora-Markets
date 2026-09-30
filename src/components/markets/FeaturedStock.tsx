@@ -14,7 +14,8 @@ import { Card } from '@/components/ui/card';
 import { Sparkline } from '@/components/common/Sparkline';
 import { AnimatedCounter } from '@/components/common/AnimatedCounter';
 import type { MarketStock } from '@/data/stocks';
-import { formatCurrency, formatNumber } from '@/lib/format';
+import { formatCurrency, getCurrencySymbol } from '@/lib/currency';
+import { formatNumber } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 interface FeaturedStockProps {
@@ -30,6 +31,8 @@ export function FeaturedStock({
 }: FeaturedStockProps) {
   const navigate = useNavigate();
   const positive = stock.change >= 0;
+  const currency = stock.currency || 'INR';
+  const currencySymbol = getCurrencySymbol(currency);
 
   const handleTrade = () => {
     navigate(`/trade?symbol=${encodeURIComponent(stock.symbol)}`);
@@ -73,7 +76,7 @@ export function FeaturedStock({
             <p className="font-display text-4xl font-bold tracking-tight">
               <AnimatedCounter
                 value={stock.price}
-                prefix="$"
+                prefix={currencySymbol}
                 decimals={2}
                 duration={1.5}
               />
@@ -88,7 +91,7 @@ export function FeaturedStock({
               )}
             >
               {positive ? '+' : ''}
-              {stock.change.toFixed(2)} ({positive ? '+' : ''}
+              {formatCurrency(stock.change, currency)} ({positive ? '+' : ''}
               {stock.changePercent.toFixed(2)}%)
             </span>
           </div>
@@ -149,7 +152,7 @@ export function FeaturedStock({
             label="52W High"
             value={
               stock.week52High
-                ? formatCurrency(stock.week52High)
+                ? formatCurrency(stock.week52High, currency)
                 : '—'
             }
           />
@@ -158,7 +161,7 @@ export function FeaturedStock({
             label="52W Low"
             value={
               stock.week52Low
-                ? formatCurrency(stock.week52Low)
+                ? formatCurrency(stock.week52Low, currency)
                 : '—'
             }
           />

@@ -40,6 +40,8 @@ const PreferencesPage = lazy(() => import('@/pages/user/PreferencesPage'));
 const ActivityPage = lazy(() => import('@/pages/user/ActivityPage'));
 const HelpCenterPage = lazy(() => import('@/pages/user/HelpCenterPage'));
 const WatchlistPage = lazy(() => import('@/pages/WatchlistPage'));
+const StudyPage = lazy(() => import('@/pages/StudyPage'));
+const BillingPage = lazy(() => import('@/pages/BillingPage'));
 
 export function AppRouter() {
   return (
@@ -80,6 +82,10 @@ export function AppRouter() {
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/wallet" element={<WalletPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />
+            <Route path="/study" element={<StudyPage />} />
+            <Route path="/academy" element={<StudyPage />} />
+            <Route path="/billing" element={<BillingPage />} />
+            <Route path="/subscription" element={<BillingPage />} />
             <Route path="/payment-methods" element={<PaymentMethodsPage />} />
             <Route path="/ai" element={<AIDashboardPage />} />
             <Route path="/ai/chat" element={<AIChatPage />} />

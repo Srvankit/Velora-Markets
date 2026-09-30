@@ -153,6 +153,8 @@ export interface AuthUser {
   investmentGoals?: string[];
   preferredMarkets?: string[];
   kycStatus: KycStatus;
+  subscriptionTier?: string;
+  subscriptionStatus?: string;
   emailVerified: boolean;
   profileCompleted: boolean;
   createdAt: string;

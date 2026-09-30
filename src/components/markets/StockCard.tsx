@@ -60,12 +60,12 @@ export function StockCard({
             </div>
 
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">
-                {stock.symbol}
+              <p className="truncate text-sm font-semibold text-foreground" title={stock.name}>
+                {stock.name}
               </p>
 
-              <p className="truncate text-xs text-muted-foreground">
-                {stock.name}
+              <p className="truncate text-xs font-mono text-muted-foreground">
+                {stock.symbol} · {stock.exchange}
               </p>
             </div>
           </div>
@@ -97,7 +97,7 @@ export function StockCard({
         <div className="mt-3 flex items-end justify-between gap-2">
           <div>
             <p className="font-display text-lg font-bold tracking-tight">
-              {formatCurrency(stock.price)}
+              {formatCurrency(stock.price, stock.currency || (stock.exchange === 'NASDAQ' || stock.exchange === 'NYSE' ? 'USD' : 'INR'))}
             </p>
 
             <p

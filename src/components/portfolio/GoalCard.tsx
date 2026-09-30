@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getGoalProgress, getEstimatedCompletion, type InvestmentGoal } from '@/data/goals';
-import { formatCurrency } from '@/lib/format';
+import { useAuth } from '@/contexts/auth-context';
+import { formatCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 
 interface GoalCardProps {
@@ -13,6 +14,8 @@ interface GoalCardProps {
 
 export function GoalCard({ goal, delay = 0 }: GoalCardProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const currency = user?.currency || 'INR';
   const progress = getGoalProgress(goal);
   const completion = getEstimatedCompletion(goal);
 
@@ -27,7 +30,7 @@ export function GoalCard({ goal, delay = 0 }: GoalCardProps) {
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{goal.name}</p>
-            <p className="text-xs text-muted-foreground">{formatCurrency(goal.targetAmount, 'USD', true)} target</p>
+            <p className="text-xs text-muted-foreground">{formatCurrency(goal.targetAmount, currency, { compact: true })} target</p>
           </div>
           <span
             className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold"
@@ -48,14 +51,14 @@ export function GoalCard({ goal, delay = 0 }: GoalCardProps) {
             />
           </div>
           <div className="mt-2 flex items-center justify-between text-xs">
-            <span className="font-medium tabular-nums">{formatCurrency(goal.currentAmount, 'USD', true)}</span>
+            <span className="font-medium tabular-nums">{formatCurrency(goal.currentAmount, currency, { compact: true })}</span>
             <span className="text-muted-foreground">Est. {completion}</span>
           </div>
         </div>
 
         <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-xs">
           <span className="text-muted-foreground">
-            {formatCurrency(goal.monthlyContribution, 'USD', true)}/mo
+            {formatCurrency(goal.monthlyContribution, currency, { compact: true })}/mo
           </span>
           <Button
             variant="ghost"

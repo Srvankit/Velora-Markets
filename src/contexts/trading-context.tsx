@@ -31,7 +31,7 @@ export function TradingProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<TradingState>(emptyState);
   const refreshTrading = useCallback(async () => {
     if (!isAuthenticated) { setState(emptyState); return; }
-    try { const [portfolio, orders] = await Promise.all([backendApi.portfolio(), backendApi.orders()]); setState({ balance: portfolio.cashBalance, holdings: mapPortfolio(portfolio), orders: orders.map(mapOrder), positions: [] }); }
+    try { const [portfolio, orders] = await Promise.all([backendApi.portfolio(), backendApi.orders()]); const orderList = Array.isArray(orders) ? orders : (orders?.content ?? []); setState({ balance: portfolio.cashBalance, holdings: mapPortfolio(portfolio), orders: orderList.map(mapOrder), positions: [] }); }
     catch { /* protected pages can render empty state; auth interceptor handles 401 */ }
   }, [isAuthenticated]);
   useEffect(() => { void refreshTrading(); }, [refreshTrading]);

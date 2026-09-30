@@ -5,7 +5,7 @@ import {
   useMemo,
 } from 'react';
 import { motion } from 'framer-motion';
-import { Download, RefreshCw, Share2, TrendingUp, TrendingDown, PieChart, Shield, Target, Newspaper, Clock, Activity } from 'lucide-react';
+import { Download, RefreshCw, Share2, TrendingUp, TrendingDown, PieChart, Shield, Target, Clock, Activity } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sparkline } from '@/components/common/Sparkline';
@@ -21,16 +21,21 @@ import { DividendCard } from '@/components/portfolio/DividendCard';
 import { Timeline } from '@/components/portfolio/Timeline';
 import { ActivityFeed } from '@/components/portfolio/ActivityFeed';
 import { AIInsightsCard } from '@/components/portfolio/AIInsightsCard';
-import { portfolioSummary, topPerformers, worstPerformers, pnlSummary } from '@/data/portfolio';
+import { topPerformers, worstPerformers, pnlSummary } from '@/data/portfolio';
 import { investmentGoals } from '@/data/goals';
 import {
   backendApi,
   type BackendPortfolio,
 } from '@/services/backend';
-import { formatCurrency, formatPercent, formatDate } from '@/lib/format';
+import { useAuth } from '@/contexts/auth-context';
+import { getCurrencySymbol, formatCurrency } from '@/lib/currency';
+import { formatPercent, formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 export default function PortfolioPage() {
+  const { user } = useAuth();
+  const currency = user?.currency || 'INR';
+  const currencySymbol = getCurrencySymbol(currency);
   const [portfolio, setPortfolio] =
   useState<BackendPortfolio | null>(null);
 
@@ -262,7 +267,7 @@ const hasHoldings =
             <SectionTitle icon={TrendingUp} title="Portfolio Overview" />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {summaryCards.map((card, i) => (
-                <PortfolioSummaryCard key={card.label} {...card} delay={i * 0.04} />
+                <PortfolioSummaryCard key={card.label} {...card} prefix={currencySymbol} delay={i * 0.04} />
               ))}
             </div>
           </section>
@@ -287,7 +292,7 @@ const hasHoldings =
                   <Card className="p-3">
                     <p className="text-xs text-muted-foreground">{stat.label}</p>
                     <p className={cn('mt-1 text-sm font-bold tabular-nums', stat.positive ? 'text-success' : 'text-danger')}>
-                      <AnimatedCounter value={stat.value} prefix="$" decimals={2} />
+                      <AnimatedCounter value={stat.value} prefix={currencySymbol} decimals={2} />
                     </p>
                   </Card>
                 </motion.div>
@@ -298,7 +303,7 @@ const hasHoldings =
                 <div>
                   <p className="text-xs text-muted-foreground">Best Day</p>
                   <p className="mt-0.5 text-sm font-bold text-success">
-                    +<AnimatedCounter value={pnlSummary.bestDay.amount} prefix="$" decimals={2} />
+                    +<AnimatedCounter value={pnlSummary.bestDay.amount} prefix={currencySymbol} decimals={2} />
                   </p>
                   <p className="text-xs text-muted-foreground">{formatDate(pnlSummary.bestDay.date)}</p>
                 </div>
@@ -308,7 +313,7 @@ const hasHoldings =
                 <div>
                   <p className="text-xs text-muted-foreground">Worst Day</p>
                   <p className="mt-0.5 text-sm font-bold text-danger">
-                    <AnimatedCounter value={pnlSummary.worstDay.amount} prefix="$" decimals={2} />
+                    <AnimatedCounter value={pnlSummary.worstDay.amount} prefix={currencySymbol} decimals={2} />
                   </p>
                   <p className="text-xs text-muted-foreground">{formatDate(pnlSummary.worstDay.date)}</p>
                 </div>
@@ -375,6 +380,9 @@ function SectionTitle({ icon: Icon, title }: { icon: typeof TrendingUp; title: s
 }
 
 function PerformerSection({ title, performers, positive }: { title: string; performers: typeof topPerformers; positive: boolean }) {
+  const { user } = useAuth();
+  const currency = user?.currency || 'INR';
+
   return (
     <section>
       <SectionTitle icon={positive ? TrendingUp : TrendingDown} title={title} />
@@ -400,7 +408,7 @@ function PerformerSection({ title, performers, positive }: { title: string; perf
                   {formatPercent(stock.returnPercent)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {formatCurrency(stock.profit, 'USD', true)}
+                  {formatCurrency(stock.profit, currency, { compact: true })}
                 </p>
               </div>
             </Card>

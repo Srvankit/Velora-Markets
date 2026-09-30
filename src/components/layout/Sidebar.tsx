@@ -14,6 +14,8 @@ import {
   ChevronLeft,
   TrendingUp,
   LogOut,
+  GraduationCap,
+  Crown,
 } from 'lucide-react';
 import { SIDEBAR_LINKS, APP } from '@/constants';
 import { cn } from '@/lib/utils';
@@ -27,6 +29,9 @@ const iconMap: Record<string, typeof LayoutDashboard> = {
   Star,
   Receipt,
   Bell,
+  TrendingUp,
+  GraduationCap,
+  Crown,
 };
 
 const bottomLinks = [
