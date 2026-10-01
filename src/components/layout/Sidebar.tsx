@@ -21,6 +21,7 @@ import { SIDEBAR_LINKS, APP } from '@/constants';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/auth-context';
+import { BrandLogo } from '@/components/common/BrandLogo';
 
 const iconMap: Record<string, typeof LayoutDashboard> = {
   LayoutDashboard,
@@ -60,13 +61,9 @@ export function Sidebar() {
     >
       <div className="flex h-16 items-center justify-between gap-2 border-b border-border px-4">
         <Link to="/" className="flex items-center gap-2.5 overflow-hidden">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary shadow-glow-sm">
-            <TrendingUp className="h-5 w-5 text-primary-foreground" strokeWidth={2.5} />
-          </div>
+          <BrandLogo compact={collapsed} className={cn('shrink-0', !collapsed && 'h-11 w-[176px]')} />
           {!collapsed && (
-            <span className="font-display text-sm font-bold tracking-tight">
-              {APP.shortName} <span className="text-muted-foreground">Markets</span>
-            </span>
+            <span className="sr-only">{APP.name}</span>
           )}
         </Link>
         <button

@@ -559,17 +559,17 @@ export function TradingViewChart({
             </span>
           )}
           {indicators.showBollinger && activeBar?.bbUpper != null && activeBar?.bbLower != null && (
-            <span className="flex items-center gap-1 rounded bg-blue-500/10 px-2 py-0.5 font-medium text-blue-400">
+            <span className="flex items-center gap-1 rounded bg-chart-1/10 px-2 py-0.5 font-medium text-chart-1">
               BB ({indicators.bbPeriod}, {indicators.bbStdDev}): [{activeBar.bbLower.toFixed(2)} - {activeBar.bbUpper.toFixed(2)}]
             </span>
           )}
           {indicators.showVwap && activeBar?.vwap != null && (
-            <span className="flex items-center gap-1 rounded bg-purple-500/10 px-2 py-0.5 font-medium text-purple-400">
+            <span className="flex items-center gap-1 rounded bg-chart-2/10 px-2 py-0.5 font-medium text-chart-2">
               VWAP: {activeBar.vwap.toFixed(2)}
             </span>
           )}
           {indicators.showRsi && activeBar?.rsi != null && (
-            <span className="flex items-center gap-1 rounded bg-indigo-500/10 px-2 py-0.5 font-medium text-indigo-400">
+            <span className="flex items-center gap-1 rounded bg-chart-5/10 px-2 py-0.5 font-medium text-chart-5">
               RSI ({indicators.rsiPeriod}): {activeBar.rsi.toFixed(2)}
             </span>
           )}
@@ -1086,9 +1086,9 @@ function ChartSvgRenderer({
       {/* TECHNICAL INDICATOR OVERLAYS ON PRICE PANE */}
       {smaPath && <path d={smaPath} fill="none" stroke="#F59E0B" strokeWidth="1.5" />}
       {emaPath && <path d={emaPath} fill="none" stroke="#06B6D4" strokeWidth="1.5" />}
-      {bbUpperPath && <path d={bbUpperPath} fill="none" stroke="#60A5FA" strokeWidth="1.2" strokeDasharray="3 3" />}
-      {bbLowerPath && <path d={bbLowerPath} fill="none" stroke="#60A5FA" strokeWidth="1.2" strokeDasharray="3 3" />}
-      {vwapPath && <path d={vwapPath} fill="none" stroke="#C084FC" strokeWidth="1.5" />}
+      {bbUpperPath && <path d={bbUpperPath} fill="none" stroke="hsl(var(--chart-1))" strokeWidth="1.2" strokeDasharray="3 3" />}
+      {bbLowerPath && <path d={bbLowerPath} fill="none" stroke="hsl(var(--chart-1))" strokeWidth="1.2" strokeDasharray="3 3" />}
+      {vwapPath && <path d={vwapPath} fill="none" stroke="hsl(var(--chart-5))" strokeWidth="1.5" />}
 
       {/* SUBPANE 1: VOLUME PANEL */}
       {indicators.showVolume && (() => {
@@ -1137,13 +1137,13 @@ function ChartSvgRenderer({
         return (
           <g>
             <line x1={paddingLeft} y1={paneTop} x2={containerWidth - paddingRight} y2={paneTop} stroke="hsl(var(--border))" strokeOpacity="0.8" />
-            <text x={paddingLeft + 4} y={paneTop + 10} fill="#818CF8" fontSize="9" fontWeight="600">
+            <text x={paddingLeft + 4} y={paneTop + 10} fill="hsl(var(--chart-5))" fontSize="9" fontWeight="600">
               RSI ({indicators.rsiPeriod})
             </text>
             {/* Overbought 70 and Oversold 30 lines */}
             <line x1={paddingLeft} y1={rsiY(70)} x2={containerWidth - paddingRight} y2={rsiY(70)} stroke="#EF4444" strokeDasharray="2 2" strokeOpacity="0.6" />
             <line x1={paddingLeft} y1={rsiY(30)} x2={containerWidth - paddingRight} y2={rsiY(30)} stroke="#10B981" strokeDasharray="2 2" strokeOpacity="0.6" />
-            <path d={rsiLinePath} fill="none" stroke="#818CF8" strokeWidth="1.5" />
+            <path d={rsiLinePath} fill="none" stroke="hsl(var(--chart-5))" strokeWidth="1.5" />
           </g>
         );
       })()}
@@ -1200,7 +1200,7 @@ function ChartSvgRenderer({
               );
             })}
 
-            <path d={macdLinePath} fill="none" stroke="#3B82F6" strokeWidth="1.5" />
+            <path d={macdLinePath} fill="none" stroke="hsl(var(--chart-1))" strokeWidth="1.5" />
             <path d={macdSigPath} fill="none" stroke="#F97316" strokeWidth="1.5" />
           </g>
         );

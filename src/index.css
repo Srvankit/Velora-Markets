@@ -7,20 +7,20 @@
 @layer base {
   :root {
     /* Velora Light theme */
-    --background: 0 0% 100%;
-    --foreground: 240 10% 4%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 4%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 4%;
-    --primary: 221 83% 53%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 240 6% 10%;
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 46%;
-    --accent: 240 5% 96%;
-    --accent-foreground: 240 6% 10%;
+    --background: 150 20% 99%;
+    --foreground: 150 16% 7%;
+    --card: 150 17% 98%;
+    --card-foreground: 150 16% 7%;
+    --popover: 150 17% 98%;
+    --popover-foreground: 150 16% 7%;
+    --primary: 161 100% 39%;
+    --primary-foreground: 160 20% 4%;
+    --secondary: 150 12% 94%;
+    --secondary-foreground: 150 16% 10%;
+    --muted: 150 12% 94%;
+    --muted-foreground: 150 8% 43%;
+    --accent: 153 26% 92%;
+    --accent-foreground: 150 16% 10%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
     --success: 160 84% 39%;
@@ -29,35 +29,35 @@
     --warning-foreground: 0 0% 100%;
     --danger: 0 84% 60%;
     --danger-foreground: 0 0% 100%;
-    --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: 221 83% 53%;
-    --surface: 0 0% 100%;
-    --surface-foreground: 240 10% 4%;
-    --chart-1: 221 83% 53%;
-    --chart-2: 160 84% 39%;
+    --border: 150 12% 84%;
+    --input: 150 12% 84%;
+    --ring: 161 100% 39%;
+    --surface: 150 17% 98%;
+    --surface-foreground: 150 16% 7%;
+    --chart-1: 161 100% 39%;
+    --chart-2: 171 100% 42%;
     --chart-3: 38 92% 50%;
     --chart-4: 0 84% 60%;
-    --chart-5: 280 65% 60%;
+    --chart-5: 153 55% 35%;
     --radius: 0.75rem;
   }
 
   .dark {
     /* Velora Dark theme (default) */
-    --background: 240 10% 4%;
-    --foreground: 0 0% 100%;
-    --card: 240 6% 7%;
-    --card-foreground: 0 0% 100%;
-    --popover: 240 6% 7%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 221 83% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 5% 12%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 5% 12%;
-    --muted-foreground: 240 5% 65%;
-    --accent: 240 5% 14%;
-    --accent-foreground: 0 0% 98%;
+    --background: 150 22% 3%;
+    --foreground: 150 14% 96%;
+    --card: 150 20% 7%;
+    --card-foreground: 150 14% 96%;
+    --popover: 150 20% 7%;
+    --popover-foreground: 150 14% 96%;
+    --primary: 161 100% 39%;
+    --primary-foreground: 150 22% 3%;
+    --secondary: 150 16% 9%;
+    --secondary-foreground: 150 14% 96%;
+    --muted: 150 16% 9%;
+    --muted-foreground: 150 9% 60%;
+    --accent: 153 22% 12%;
+    --accent-foreground: 150 14% 96%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
     --success: 160 84% 39%;
@@ -66,16 +66,16 @@
     --warning-foreground: 0 0% 100%;
     --danger: 0 72% 51%;
     --danger-foreground: 0 0% 100%;
-    --border: 240 5% 16%;
-    --input: 240 5% 16%;
-    --ring: 221 83% 60%;
-    --surface: 240 6% 10%;
-    --surface-foreground: 0 0% 100%;
-    --chart-1: 221 83% 60%;
-    --chart-2: 160 84% 45%;
+    --border: 150 16% 16%;
+    --input: 150 16% 16%;
+    --ring: 161 100% 39%;
+    --surface: 150 19% 10%;
+    --surface-foreground: 150 14% 96%;
+    --chart-1: 161 100% 39%;
+    --chart-2: 171 100% 42%;
     --chart-3: 38 92% 55%;
     --chart-4: 0 72% 60%;
-    --chart-5: 280 65% 65%;
+    --chart-5: 153 55% 48%;
   }
 }
 

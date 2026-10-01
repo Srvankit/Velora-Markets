@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { TrendingUp, ArrowRight, Mail } from 'lucide-react';
+import { ArrowRight, Mail } from 'lucide-react';
 import { APP } from '@/constants';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { AuthSuccess } from '@/components/auth/AuthSuccess';
 import { useAuth } from '@/contexts/auth-context';
+import { BrandLogo } from '@/components/common/BrandLogo';
 
 export default function AccountCreatedPage() {
   const { user } = useAuth();
@@ -19,12 +20,7 @@ export default function AccountCreatedPage() {
 
       <div className="relative flex items-center justify-between px-6 py-5 sm:px-10">
         <Link to="/" className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-glow-sm">
-            <TrendingUp className="h-5 w-5 text-primary-foreground" strokeWidth={2.5} />
-          </div>
-          <span className="font-display text-lg font-bold tracking-tight">
-            {APP.shortName} <span className="text-muted-foreground">Markets</span>
-          </span>
+          <BrandLogo className="h-12 w-[190px] sm:w-[210px]" />
         </Link>
         <ThemeToggle />
       </div>

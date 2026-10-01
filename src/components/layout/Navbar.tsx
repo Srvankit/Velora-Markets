@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, TrendingUp } from 'lucide-react';
-import { NAV_LINKS, APP } from '@/constants';
+import { Menu, X } from 'lucide-react';
+import { NAV_LINKS } from '@/constants';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { Button } from '@/components/ui/button';
+import { BrandLogo } from '@/components/common/BrandLogo';
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -35,12 +36,7 @@ export function Navbar() {
     >
       <nav className="container flex h-16 items-center justify-between gap-4">
         <Link to="/" className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-glow-sm">
-            <TrendingUp className="h-5 w-5 text-primary-foreground" strokeWidth={2.5} />
-          </div>
-          <span className="font-display text-lg font-bold tracking-tight">
-            {APP.shortName} <span className="text-muted-foreground">Markets</span>
-          </span>
+          <BrandLogo className="h-11 w-[172px] sm:w-[190px]" />
         </Link>
 
         <div className="hidden items-center gap-1 md:flex">

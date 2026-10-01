@@ -86,10 +86,10 @@ export default {
       boxShadow: {
         'glow': '0 0 40px -10px hsl(var(--primary) / 0.5)',
         'glow-sm': '0 0 20px -8px hsl(var(--primary) / 0.4)',
-        'soft': '0 4px 24px -8px hsl(240 10% 4% / 0.15)',
-        'soft-lg': '0 12px 40px -12px hsl(240 10% 4% / 0.2)',
-        'card': '0 2px 16px -4px hsl(240 10% 4% / 0.1)',
-        'card-hover': '0 8px 32px -8px hsl(240 10% 4% / 0.2)',
+        'soft': '0 4px 24px -8px hsl(150 22% 3% / 0.15)',
+        'soft-lg': '0 12px 40px -12px hsl(150 22% 3% / 0.2)',
+        'card': '0 2px 16px -4px hsl(150 22% 3% / 0.1)',
+        'card-hover': '0 8px 32px -8px hsl(150 22% 3% / 0.2)',
       },
       keyframes: {
         'accordion-down': {

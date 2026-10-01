@@ -265,7 +265,7 @@ export default function WalletPage() {
                           className={cn(
                             'text-[10px] uppercase font-mono',
                             entry.type === 'INITIAL_CAPITAL'
-                              ? 'bg-blue-500/10 text-blue-500 border-blue-500/30'
+                              ? 'bg-primary/10 text-primary border-primary/30'
                               : entry.type === 'BUY'
                               ? 'bg-rose-500/10 text-rose-500 border-rose-500/30'
                               : entry.type === 'SELL'
