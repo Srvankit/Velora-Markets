@@ -261,6 +261,9 @@ export interface BackendRewardHistoryItem {
 
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError(error)) {
+    if (!error.response && (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED')) {
+      return 'Unable to reach the Velora backend. Start the Spring Boot server on port 8080 and try again.';
+    }
     const data = error.response?.data as { message?: string; error?: string; errors?: Record<string, string> } | undefined;
     if (data?.message) return data.message;
     if (data?.errors) return Object.values(data.errors).join(', ');

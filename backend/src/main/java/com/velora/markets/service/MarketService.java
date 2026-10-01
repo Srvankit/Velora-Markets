@@ -5,7 +5,6 @@ import com.velora.markets.dto.MarketStockResponse;
 import com.velora.markets.entity.Stock;
 import com.velora.markets.exception.ApiException;
 import com.velora.markets.repository.StockRepository;
-import com.velora.markets.service.market.DefaultMarketDataProvider;
 import com.velora.markets.service.market.FmpMarketDataProvider;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -21,18 +20,15 @@ public class MarketService {
     private final StockRepository stockRepository;
     private final MapperService mapper;
     private final FmpMarketDataProvider fmpProvider;
-    private final DefaultMarketDataProvider defaultProvider;
 
     public MarketService(
         StockRepository stockRepository,
         MapperService mapper,
-        FmpMarketDataProvider fmpProvider,
-        DefaultMarketDataProvider defaultProvider
+        FmpMarketDataProvider fmpProvider
     ) {
         this.stockRepository = stockRepository;
         this.mapper = mapper;
         this.fmpProvider = fmpProvider;
-        this.defaultProvider = defaultProvider;
     }
 
     @Transactional(readOnly = true)
@@ -56,13 +52,9 @@ public class MarketService {
             .orElseThrow(() -> new ApiException("Stock not found: " + symbol, HttpStatus.NOT_FOUND));
 
         if (fmpProvider.isConfigured()) {
-            List<HistoricalBarResponse> fmpBars = fmpProvider.fetchHistoricalBars(stock, timeframe);
-            if (fmpBars != null && !fmpBars.isEmpty()) {
-                return fmpBars;
-            }
+            return fmpProvider.fetchHistoricalBars(stock, timeframe);
         }
-
-        return defaultProvider.fetchHistoricalBars(stock, timeframe);
+        return List.of();
     }
 
     @Transactional(readOnly = true)
@@ -101,7 +93,19 @@ public class MarketService {
                 return live;
             }
         }
-        return defaultProvider.fetchLiveQuote(stock);
+        return unavailableQuote(stock);
+    }
+
+    private MarketStockResponse unavailableQuote(Stock stock) {
+        MarketStockResponse response = new MarketStockResponse();
+        response.setSymbol(stock.getSymbol());
+        response.setCompanyName(stock.getCompanyName());
+        response.setExchange(stock.getExchange().name());
+        response.setSector(stock.getSector());
+        response.setCurrency(stock.getCurrency());
+        response.setMarketStatus("DATA_UNAVAILABLE");
+        response.setTimestamp(java.time.Instant.now().toString());
+        return response;
     }
 
     private List<MarketStockResponse> rankedByChange(boolean ascending) {

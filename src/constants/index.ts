@@ -12,7 +12,9 @@ export const APP = {
 } as const;
 
 export const API_CONFIG = {
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? '/api',
+  // Keep browser requests same-origin by default so Vite's /api proxy works
+  // locally and deployments do not accidentally call the user's localhost.
+  baseURL: import.meta.env.VITE_API_BASE_URL?.trim() || '/api',
   timeout: 15000,
   version: 'v1',
 } as const;

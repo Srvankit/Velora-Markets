@@ -116,27 +116,3 @@ export function getAIInsights(symbol: string, currentPrice: number, averageTarge
     },
   ];
 }
-
-export function generateChartData(basePrice: number, points: number, volatility: number): { time: string; price: number }[] {
-  const data: { time: string; price: number }[] = [];
-  let price = basePrice * 0.85;
-  for (let i = 0; i < points; i++) {
-    const drift = (basePrice - price) * 0.02;
-    const noise = (Math.random() - 0.48) * volatility * price;
-    price = Math.max(price + drift + noise, basePrice * 0.5);
-    data.push({ time: `${i}`, price: Number(price.toFixed(2)) });
-  }
-  data[points - 1].price = basePrice;
-  return data;
-}
-
-export const chartTimeframes = [
-  { label: '1D', points: 24, volatility: 0.008 },
-  { label: '1W', points: 35, volatility: 0.012 },
-  { label: '1M', points: 30, volatility: 0.018 },
-  { label: '3M', points: 45, volatility: 0.025 },
-  { label: '6M', points: 50, volatility: 0.03 },
-  { label: '1Y', points: 52, volatility: 0.035 },
-  { label: '5Y', points: 60, volatility: 0.05 },
-  { label: 'MAX', points: 70, volatility: 0.06 },
-] as const;

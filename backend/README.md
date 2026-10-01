@@ -24,10 +24,11 @@ H2 console: `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:file:./data/ve
 Set in the project root `.env`:
 
 ```env
-VITE_API_BASE_URL=http://localhost:8080/api
+VITE_API_BASE_URL=/api
 ```
 
-Or rely on the Vite proxy (`/api` → `http://localhost:8080/api`).
+The Vite dev server proxies `/api` to `http://localhost:8080/api`. Start the
+backend before submitting registration or login forms.
 
 ## Endpoints
 

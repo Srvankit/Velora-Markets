@@ -17,6 +17,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { backendApi, type BackendHistoricalBar } from '@/services/backend';
 import {
+  streamIntervalForTimeframe,
+  subscribeToMarketStream,
+  type MarketStreamStatus,
+} from '@/services/realtime-market';
+import {
   computeIndicators,
   DEFAULT_INDICATOR_SETTINGS,
   type IndicatorSettings,
@@ -25,6 +30,13 @@ import {
 import { IndicatorModal } from './IndicatorModal';
 import { formatCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
+
+function streamCandleTime(timestamp: string, interval: string): string {
+  const date = new Date(timestamp);
+  const minutes = interval === '1m' ? 1 : interval === '5m' ? 5 : interval === '15m' ? 15 : interval === '30m' ? 30 : 60;
+  date.setUTCMinutes(Math.floor(date.getUTCMinutes() / minutes) * minutes, 0, 0);
+  return date.toISOString();
+}
 
 export interface TradingViewChartProps {
   symbol: string;
@@ -71,6 +83,9 @@ export function TradingViewChart({
   const [rawBars, setRawBars] = useState<BackendHistoricalBar[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const [streamStatus, setStreamStatus] = useState<MarketStreamStatus>(
+    marketStatus === 'MARKET_CLOSED' ? 'MARKET_CLOSED' : 'DATA_UNAVAILABLE',
+  );
 
   // Zoom & Pan state
   // visibleCount: number of candles displayed in view
@@ -153,6 +168,51 @@ export function TradingViewChart({
       isMounted = false;
       if (intervalId) clearInterval(intervalId);
     };
+  }, [symbol, timeframe, marketStatus]);
+
+  useEffect(() => {
+    const interval = streamIntervalForTimeframe(timeframe);
+    if (!interval) {
+      setStreamStatus(marketStatus === 'DATA_UNAVAILABLE' ? 'DATA_UNAVAILABLE' : 'MARKET_CLOSED');
+      return;
+    }
+
+    const unsubscribe = subscribeToMarketStream(
+      symbol,
+      interval,
+      (event) => {
+        const candle = event.candle ?? (
+          event.timestamp &&
+          event.open != null &&
+          event.high != null &&
+          event.low != null &&
+          event.close != null
+            ? {
+                time: streamCandleTime(event.timestamp, interval),
+                open: event.open,
+                high: event.high,
+                low: event.low,
+                close: event.close,
+                volume: event.volume ?? 0,
+              }
+            : undefined
+        );
+        if (!candle) return;
+        setRawBars((previous) => {
+          const last = previous[previous.length - 1];
+          if (last?.time === candle.time) {
+            return [...previous.slice(0, -1), candle];
+          }
+          if (last && new Date(candle.time).getTime() < new Date(last.time).getTime()) {
+            return previous;
+          }
+          return [...previous, candle].slice(-2500);
+        });
+      },
+      setStreamStatus,
+    );
+
+    return unsubscribe;
   }, [symbol, timeframe, marketStatus]);
 
   // Compute indicators on the entire dataset first for mathematical continuity
@@ -304,15 +364,21 @@ export function TradingViewChart({
               <span
                 className={cn(
                   'flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
-                  marketStatus === 'LIVE'
+                  streamStatus === 'LIVE'
                     ? 'bg-success/15 text-success animate-pulse'
-                    : marketStatus === 'DELAYED'
+                    : streamStatus === 'DELAYED'
                     ? 'bg-warning/15 text-warning'
                     : 'bg-muted text-muted-foreground',
                 )}
               >
-                <span className={cn('h-1.5 w-1.5 rounded-full', marketStatus === 'LIVE' ? 'bg-success' : 'bg-muted-foreground')} />
-                {marketStatus === 'LIVE' ? 'LIVE' : marketStatus === 'DELAYED' ? 'DELAYED' : 'MARKET CLOSED'}
+                <span className={cn('h-1.5 w-1.5 rounded-full', streamStatus === 'LIVE' ? 'bg-success' : 'bg-muted-foreground')} />
+                {streamStatus === 'LIVE'
+                  ? 'LIVE'
+                  : streamStatus === 'DELAYED'
+                  ? 'DELAYED'
+                  : streamStatus === 'DATA_UNAVAILABLE'
+                  ? 'DATA UNAVAILABLE'
+                  : 'MARKET CLOSED'}
               </span>
             </div>
 
@@ -557,7 +623,7 @@ export function TradingViewChart({
             chartType={chartType}
             indicators={indicators}
             currency={currency}
-            marketStatus={marketStatus}
+            marketStatus={streamStatus}
             currentPrice={currentPrice}
             hoverIndex={hoverIndex}
             onHoverIndex={setHoverIndex}

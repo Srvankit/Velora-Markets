@@ -57,7 +57,7 @@ public class FmpMarketDataProvider implements MarketDataProvider {
         if (isConfigured()) {
             log.info("FMP Market Data Provider initialized successfully (API Key active).");
         } else {
-            log.info("FMP Market Data Provider initialized without API key (fallback mode).");
+            log.warn("FMP Market Data Provider initialized without API key; market data is unavailable.");
         }
     }
 
