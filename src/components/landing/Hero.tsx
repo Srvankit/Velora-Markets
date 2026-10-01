@@ -42,9 +42,9 @@ export function Hero() {
             variants={staggerItem}
             className="mt-6 font-display text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl lg:text-[4.25rem]"
           >
-            Trade Smarter.
+            Learn. Trade. Grow.
             <br />
-            <span className="text-gradient">Invest Confidently.</span>
+            <span className="text-gradient">Together.</span>
           </motion.h1>
 
           <motion.p

@@ -5,7 +5,7 @@
 export const APP = {
   name: 'Velora Markets',
   shortName: 'Velora',
-  tagline: 'Trade Smarter. Invest Confidently.',
+  tagline: 'Learn. Trade. Grow. Together.',
   description:
     'A modern investment platform to buy stocks, track portfolios, and invest with confidence.',
   version: '1.0.0',

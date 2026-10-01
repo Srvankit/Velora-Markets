@@ -1,10 +1,11 @@
 import { type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { TrendingUp, ShieldCheck, BarChart3, Zap } from 'lucide-react';
+import { ShieldCheck, BarChart3, Zap } from 'lucide-react';
 import { APP } from '@/constants';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { fadeUp, staggerContainer, staggerItem } from '@/lib/animations';
+import { BrandLogo } from '@/components/common/BrandLogo';
 
 /**
  * Two-column auth shell: branded illustration panel on the left,
@@ -30,12 +31,7 @@ export function AuthShell({
       <div className="relative flex min-h-screen flex-col">
         <div className="flex items-center justify-between px-6 py-5 sm:px-10">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-glow-sm">
-              <TrendingUp className="h-5 w-5 text-primary-foreground" strokeWidth={2.5} />
-            </div>
-            <span className="font-display text-lg font-bold tracking-tight">
-              {APP.shortName} <span className="text-muted-foreground">Markets</span>
-            </span>
+            <BrandLogo className="h-12 w-[190px] sm:w-[210px]" />
           </Link>
           <ThemeToggle />
         </div>
@@ -84,12 +80,7 @@ function AuthIllustration() {
       </div>
 
       <Link to="/" className="relative flex items-center gap-2.5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-glow-sm">
-          <TrendingUp className="h-5 w-5 text-primary-foreground" strokeWidth={2.5} />
-        </div>
-        <span className="font-display text-lg font-bold tracking-tight">
-          {APP.shortName} <span className="text-muted-foreground">Markets</span>
-        </span>
+        <BrandLogo className="h-16 w-[260px] xl:h-20 xl:w-[320px]" />
       </Link>
 
       <motion.div
@@ -100,7 +91,7 @@ function AuthIllustration() {
       >
         <motion.div variants={staggerItem} className="space-y-4">
           <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-            Invest with confidence
+            Learn. Trade. Grow. Together.
           </span>
           <h2 className="font-display text-4xl font-extrabold leading-tight tracking-tight xl:text-5xl">
             The modern way to <span className="text-gradient">grow your wealth</span>

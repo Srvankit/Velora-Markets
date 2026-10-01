@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import { TrendingUp, Twitter, Linkedin, Github, Facebook } from 'lucide-react';
+import { Twitter, Linkedin, Github, Facebook } from 'lucide-react';
 import { APP } from '@/constants';
+import { BrandLogo } from '@/components/common/BrandLogo';
 
 const columns = [
   {
@@ -46,12 +47,7 @@ export function Footer() {
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-5">
           <div className="space-y-4 lg:col-span-2">
             <Link to="/" className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary">
-                <TrendingUp className="h-5 w-5 text-primary-foreground" strokeWidth={2.5} />
-              </div>
-              <span className="font-display text-lg font-bold tracking-tight">
-                {APP.shortName} <span className="text-muted-foreground">Markets</span>
-              </span>
+              <BrandLogo className="h-14 w-[220px]" />
             </Link>
             <p className="max-w-sm text-sm text-muted-foreground">{APP.description}</p>
             <div className="flex items-center gap-2">
