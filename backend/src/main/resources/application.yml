@@ -30,6 +30,9 @@ velora:
     expiration-ms: 86400000
   portfolio:
     starting-cash: 100000.00
+  market:
+    fmp:
+      api-key: ${FMP_API_KEY:}
   cors:
     allowed-origins: http://localhost:5173,http://localhost:4173,http://127.0.0.1:5173
 

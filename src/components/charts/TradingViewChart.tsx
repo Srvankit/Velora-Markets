@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Maximize2,
   Minimize2,
@@ -7,7 +7,10 @@ import {
   TrendingUp,
   Activity,
   RotateCcw,
-  Sparkles,
+  ZoomIn,
+  ZoomOut,
+  HelpCircle,
+  X,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -63,10 +66,17 @@ export function TradingViewChart({
   const [timeframe, setTimeframe] = useState('1M');
   const [chartType, setChartType] = useState<ChartType>('candles');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [indicatorModalOpen, setIndicatorModalOpen] = useState(false);
   const [rawBars, setRawBars] = useState<BackendHistoricalBar[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+
+  // Zoom & Pan state
+  // visibleCount: number of candles displayed in view
+  // offset: index offset from the most recent candle (0 = latest candle at right edge)
+  const [visibleCount, setVisibleCount] = useState(60);
+  const [offset, setOffset] = useState(0);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -101,79 +111,101 @@ export function TradingViewChart({
     return count;
   }, [indicators]);
 
-  // Load bars from backend
+  // Load bars from backend & auto-refresh during market hours
   useEffect(() => {
     let isMounted = true;
     async function loadData() {
-      setLoading(true);
       try {
         const history = await backendApi.marketStockHistory(symbol, timeframe);
         if (isMounted) {
           if (history && history.length > 0) {
             setRawBars(history);
+            // Default fit on initial timeframe load
+            const initialCount = Math.min(history.length, history.length > 120 ? 80 : history.length);
+            setVisibleCount(Math.max(15, initialCount));
+            setOffset(0);
           } else {
-            // Fallback deterministic bar
-            setRawBars([
-              {
-                time: new Date().toISOString().split('T')[0],
-                open: previousClose || currentPrice,
-                high: Math.max(currentPrice, previousClose || currentPrice),
-                low: Math.min(currentPrice, previousClose || currentPrice),
-                close: currentPrice,
-                volume: 1_000_000,
-              },
-            ]);
+            setRawBars([]);
           }
         }
       } catch {
         if (isMounted) {
-          setRawBars([
-            {
-              time: new Date().toISOString().split('T')[0],
-              open: previousClose || currentPrice,
-              high: currentPrice * 1.01,
-              low: currentPrice * 0.99,
-              close: currentPrice,
-              volume: 1_000_000,
-            },
-          ]);
+          setRawBars([]);
         }
       } finally {
         if (isMounted) setLoading(false);
       }
     }
+
+    setLoading(true);
     void loadData();
+
+    let intervalId: NodeJS.Timeout | null = null;
+    if (marketStatus === 'LIVE' || timeframe === '1D') {
+      intervalId = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          void loadData();
+        }
+      }, 15000);
+    }
+
     return () => {
       isMounted = false;
+      if (intervalId) clearInterval(intervalId);
     };
-  }, [symbol, timeframe, currentPrice, previousClose]);
+  }, [symbol, timeframe, marketStatus]);
 
-  // Computed bars with indicators
-  const bars: ComputedBar[] = useMemo(() => {
+  // Compute indicators on the entire dataset first for mathematical continuity
+  const computedBars: ComputedBar[] = useMemo(() => {
     return computeIndicators(rawBars, indicators);
   }, [rawBars, indicators]);
 
-  const activeBar = hoverIndex !== null && bars[hoverIndex] ? bars[hoverIndex] : bars[bars.length - 1];
+  const totalBars = computedBars.length;
 
-  const change = activeBar ? activeBar.close - (previousClose || activeBar.open) : 0;
-  const changePct = previousClose && previousClose > 0 ? (change / previousClose) * 100 : 0;
-  const isPositive = change >= 0;
+  // Compute sliced visible window based on visibleCount and offset
+  const { visibleBars } = useMemo(() => {
+    if (totalBars === 0) {
+      return { visibleBars: [], startIndex: 0, endIndex: 0 };
+    }
+    const end = Math.max(1, totalBars - offset);
+    const start = Math.max(0, end - visibleCount);
+    return {
+      visibleBars: computedBars.slice(start, end),
+      startIndex: start,
+      endIndex: end,
+    };
+  }, [computedBars, totalBars, offset, visibleCount]);
 
-  // Toggle fullscreen
-  const toggleFullscreen = () => {
-    if (!containerRef.current) return;
+  // Reset zoom & pan to default
+  const handleResetView = useCallback(() => {
+    setOffset(0);
+    const defaultCount = Math.min(totalBars, totalBars > 120 ? 80 : totalBars);
+    setVisibleCount(Math.max(15, defaultCount || 50));
+  }, [totalBars]);
+
+  // Zoom controls
+  const handleZoomIn = useCallback(() => {
+    setVisibleCount((prev) => Math.max(10, Math.round(prev * 0.75)));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setVisibleCount((prev) => Math.min(totalBars, Math.round(prev * 1.35)));
+  }, [totalBars]);
+
+  // Fullscreen toggle
+  const toggleFullscreen = useCallback(() => {
     if (!isFullscreen) {
-      if (containerRef.current.requestFullscreen) {
-        void containerRef.current.requestFullscreen();
+      if (containerRef.current?.requestFullscreen) {
+        void containerRef.current.requestFullscreen().catch(() => {});
       }
       setIsFullscreen(true);
     } else {
-      if (document.exitFullscreen) {
-        void document.exitFullscreen();
+      if (document.fullscreenElement && document.exitFullscreen) {
+        void document.exitFullscreen().catch(() => {});
       }
       setIsFullscreen(false);
     }
-  };
+  }, [isFullscreen]);
 
   useEffect(() => {
     const handleFsChange = () => {
@@ -183,17 +215,82 @@ export function TradingViewChart({
     return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, []);
 
+  // Keyboard navigation & shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const step = e.ctrlKey || e.metaKey ? 10 : 1;
+        setOffset((prev) => Math.min(Math.max(0, totalBars - visibleCount), prev + step));
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        const step = e.ctrlKey || e.metaKey ? 10 : 1;
+        setOffset((prev) => Math.max(0, prev - step));
+      } else if (e.key === 'ArrowUp' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        handleZoomIn();
+      } else if (e.key === 'ArrowDown' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        handleZoomOut();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        setOffset(0);
+      } else if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        handleResetView();
+      } else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        toggleFullscreen();
+      } else if (e.key === '1') {
+        setTimeframe('1D');
+      } else if (e.key === '5') {
+        setTimeframe('5D');
+      } else if (e.key === 'm' || e.key === 'M') {
+        setTimeframe('1M');
+      } else if (e.key === 'y' || e.key === 'Y') {
+        setTimeframe('1Y');
+      } else if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [totalBars, visibleCount, handleZoomIn, handleZoomOut, handleResetView, toggleFullscreen, isFullscreen]);
+
+  // Active bar resolution for HUD
+  const activeBar =
+    hoverIndex !== null && visibleBars[hoverIndex]
+      ? visibleBars[hoverIndex]
+      : visibleBars[visibleBars.length - 1];
+
+  const latestBar = visibleBars[visibleBars.length - 1];
+  const displayPrice = activeBar ? activeBar.close : (latestBar ? latestBar.close : currentPrice);
+  const change = activeBar ? activeBar.close - (previousClose || activeBar.open) : (latestBar ? latestBar.close - (previousClose || latestBar.open) : 0);
+  const changePct = previousClose && previousClose > 0 ? (change / previousClose) * 100 : 0;
+  const isPositive = change >= 0;
+
   return (
     <Card
       ref={containerRef}
       className={cn(
-        'relative flex flex-col overflow-hidden border border-border/80 bg-card/60 backdrop-blur-xl',
-        isFullscreen ? 'h-screen w-screen rounded-none p-6 z-50' : 'p-5',
+        'relative flex flex-col overflow-hidden border border-border/80 bg-card/70 backdrop-blur-xl transition-all',
+        isFullscreen
+          ? 'fixed inset-0 z-50 h-screen w-screen rounded-none p-4 sm:p-6 bg-background'
+          : 'p-4 sm:p-5 min-h-[500px]',
         className,
       )}
     >
       {/* HEADER CONTROLS */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-3">
         {/* Instrument Title & Market Status */}
         <div className="flex flex-wrap items-center gap-3">
           <div>
@@ -201,7 +298,7 @@ export function TradingViewChart({
               <h2 className="font-display text-base font-bold tracking-tight text-foreground sm:text-lg">
                 {companyName}
               </h2>
-              <Badge variant="outline" className="border-border/60 bg-muted/30 font-mono text-[11px] uppercase">
+              <Badge variant="outline" className="border-border/60 bg-muted/40 font-mono text-[11px] uppercase">
                 {symbol} · {exchange}
               </Badge>
               <span
@@ -215,14 +312,14 @@ export function TradingViewChart({
                 )}
               >
                 <span className={cn('h-1.5 w-1.5 rounded-full', marketStatus === 'LIVE' ? 'bg-success' : 'bg-muted-foreground')} />
-                {marketStatus}
+                {marketStatus === 'LIVE' ? 'LIVE' : marketStatus === 'DELAYED' ? 'DELAYED' : 'MARKET CLOSED'}
               </span>
             </div>
 
             {/* Price & Change Live Display */}
             <div className="mt-1 flex items-baseline gap-2">
               <span className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-                {formatCurrency(activeBar ? activeBar.close : currentPrice, currency)}
+                {formatCurrency(displayPrice, currency)}
               </span>
               <span className={cn('flex items-center text-xs font-semibold', isPositive ? 'text-success' : 'text-danger')}>
                 {isPositive ? '+' : ''}
@@ -233,7 +330,7 @@ export function TradingViewChart({
           </div>
         </div>
 
-        {/* Toolbar: Chart types, Indicators, Fullscreen */}
+        {/* Toolbar: Chart types, Zoom, Indicators, Shortcuts, Fullscreen */}
         <div className="flex flex-wrap items-center gap-1.5">
           {/* Chart Type Toggle */}
           <div className="flex rounded-lg border border-border/70 bg-muted/30 p-0.5">
@@ -272,6 +369,31 @@ export function TradingViewChart({
             </button>
           </div>
 
+          {/* Quick Zoom & Fit Controls */}
+          <div className="flex rounded-lg border border-border/70 bg-muted/30 p-0.5">
+            <button
+              onClick={handleZoomIn}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-background hover:text-foreground transition-colors"
+              title="Zoom In (Ctrl + ↑)"
+            >
+              <ZoomIn className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={handleZoomOut}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-background hover:text-foreground transition-colors"
+              title="Zoom Out (Ctrl + ↓)"
+            >
+              <ZoomOut className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={handleResetView}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-background hover:text-foreground transition-colors"
+              title="Reset / Fit View (R)"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
           {/* Indicators Button */}
           <Button
             variant="outline"
@@ -288,21 +410,33 @@ export function TradingViewChart({
             )}
           </Button>
 
-          {/* Fullscreen Button */}
+          {/* Keyboard Shortcuts Help Button */}
           <Button
             variant="ghost"
             size="icon"
-            onClick={toggleFullscreen}
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+            onClick={() => setShowShortcutsHelp((v) => !v)}
+            className={cn('h-8 w-8 text-muted-foreground hover:text-foreground', showShortcutsHelp && 'text-primary bg-primary/10')}
+            title="Keyboard Shortcuts"
           >
-            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            <HelpCircle className="h-4 w-4" />
+          </Button>
+
+          {/* Fullscreen Button */}
+          <Button
+            variant={isFullscreen ? 'default' : 'ghost'}
+            size="sm"
+            onClick={toggleFullscreen}
+            className="h-8 gap-1.5 text-xs font-semibold"
+            title={isFullscreen ? 'Exit Fullscreen (Esc)' : 'Fullscreen (F)'}
+          >
+            {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            <span>{isFullscreen ? 'Exit Fullscreen' : 'Expand'}</span>
           </Button>
         </div>
       </div>
 
-      {/* TIMEFRAME SELECTOR BAR */}
-      <div className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+      {/* TIMEFRAME SELECTOR & OHLCV HUD BAR */}
+      <div className="flex flex-wrap items-center justify-between gap-2 py-2">
         <div className="flex flex-wrap items-center gap-1">
           {TIMEFRAMES.map((tf) => (
             <button
@@ -320,11 +454,11 @@ export function TradingViewChart({
           ))}
         </div>
 
-        {/* OHLCV Hover HUD (TradingView Style Bar) */}
+        {/* OHLCV Crosshair HUD (Brokerage-Style live bar) */}
         {activeBar && (
           <div className="flex flex-wrap items-center gap-3 font-mono text-[11px] text-muted-foreground">
             <span>
-              Date: <strong className="text-foreground">{activeBar.time}</strong>
+              Time: <strong className="text-foreground">{activeBar.time}</strong>
             </span>
             <span>
               O: <strong className="text-foreground">{activeBar.open.toFixed(2)}</strong>
@@ -345,7 +479,7 @@ export function TradingViewChart({
         )}
       </div>
 
-      {/* ACTIVE INDICATOR TAGS HUD */}
+      {/* ACTIVE INDICATOR HUD */}
       {activeIndicatorCount > 0 && (
         <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px]">
           {indicators.showSma && activeBar?.sma != null && (
@@ -381,8 +515,34 @@ export function TradingViewChart({
         </div>
       )}
 
-      {/* CHART SVG CANVAS */}
-      <div className={cn('relative w-full select-none', isFullscreen ? 'flex-1 min-h-[500px]' : 'h-[360px]')}>
+      {/* SHORTCUTS HELP OVERLAY */}
+      {showShortcutsHelp && (
+        <div className="absolute right-4 top-16 z-30 w-72 rounded-xl border border-border bg-card/95 p-3.5 shadow-xl backdrop-blur-xl text-xs space-y-2">
+          <div className="flex items-center justify-between font-semibold text-foreground border-b border-border/50 pb-1.5">
+            <span>Chart Keyboard Navigation</span>
+            <button onClick={() => setShowShortcutsHelp(false)} className="text-muted-foreground hover:text-foreground">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5 text-muted-foreground">
+            <div><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">← / →</kbd> Pan 1 bar</div>
+            <div><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">Ctrl + ← / →</kbd> Fast pan</div>
+            <div><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">Ctrl + ↑ / ↓</kbd> Zoom In/Out</div>
+            <div><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">Mouse Wheel</kbd> Zoom</div>
+            <div><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">Shift + Wheel</kbd> Horizontal pan</div>
+            <div><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">Click + Drag</kbd> Pan view</div>
+            <div><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">Double-Click</kbd> Fit / Reset</div>
+            <div><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">Home</kbd> Latest candle</div>
+            <div><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">R</kbd> Reset view</div>
+            <div><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">F</kbd> Fullscreen</div>
+            <div><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">1 / 5 / M / Y</kbd> Timeframes</div>
+            <div><kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">Esc</kbd> Exit Fullscreen</div>
+          </div>
+        </div>
+      )}
+
+      {/* CHART SVG CANVAS & RENDERER */}
+      <div className={cn('relative w-full select-none', isFullscreen ? 'flex-1 min-h-[500px]' : 'h-[420px] sm:h-[460px]')}>
         {loading ? (
           <div className="flex h-full w-full items-center justify-center">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -392,13 +552,32 @@ export function TradingViewChart({
           </div>
         ) : (
           <ChartSvgRenderer
-            bars={bars}
+            bars={visibleBars}
+            totalBars={totalBars}
             chartType={chartType}
             indicators={indicators}
             currency={currency}
+            marketStatus={marketStatus}
+            currentPrice={currentPrice}
             hoverIndex={hoverIndex}
             onHoverIndex={setHoverIndex}
             isPositive={isPositive}
+            onPan={(deltaCandles) => {
+              setOffset((prev) => Math.max(0, Math.min(Math.max(0, totalBars - visibleCount), prev + deltaCandles)));
+            }}
+            onZoom={(zoomDelta, cursorRatio) => {
+              setVisibleCount((prev) => {
+                const next = Math.max(10, Math.min(totalBars, prev + zoomDelta));
+                const countDiff = next - prev;
+                if (countDiff !== 0) {
+                  setOffset((oldOffset) =>
+                    Math.max(0, Math.min(Math.max(0, totalBars - next), Math.round(oldOffset - countDiff * (1 - cursorRatio))))
+                  );
+                }
+                return next;
+              });
+            }}
+            onResetView={handleResetView}
           />
         )}
       </div>
@@ -416,26 +595,40 @@ export function TradingViewChart({
 
 interface SvgRendererProps {
   bars: ComputedBar[];
+  totalBars: number;
   chartType: ChartType;
   indicators: IndicatorSettings;
   currency: string;
+  marketStatus: string;
+  currentPrice: number;
   hoverIndex: number | null;
   onHoverIndex: (idx: number | null) => void;
   isPositive: boolean;
+  onPan: (deltaCandles: number) => void;
+  onZoom: (zoomDelta: number, cursorRatio: number) => void;
+  onResetView: () => void;
 }
 
 function ChartSvgRenderer({
   bars,
   chartType,
   indicators,
-  currency,
+  marketStatus,
+  currentPrice,
   hoverIndex,
   onHoverIndex,
   isPositive,
+  onPan,
+  onZoom,
+  onResetView,
 }: SvgRendererProps) {
   const [containerWidth, setContainerWidth] = useState(800);
-  const [containerHeight, setContainerHeight] = useState(360);
+  const [containerHeight, setContainerHeight] = useState(420);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  // Drag pan tracking
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef<{ clientX: number } | null>(null);
 
   useEffect(() => {
     if (!svgRef.current) return;
@@ -450,138 +643,233 @@ function ChartSvgRenderer({
   }, []);
 
   const n = bars.length;
-  if (n === 0) return null;
 
-  // Split height into panes:
-  // Main Price Pane: 65% (or 85% if no subpanes)
-  // Subpanes: Volume (15%), RSI (20%), MACD (20%)
-  const hasSubpanes = indicators.showRsi || indicators.showMacd || indicators.showVolume;
-  const rsiHeight = indicators.showRsi ? 60 : 0;
-  const macdHeight = indicators.showMacd ? 60 : 0;
+  if (n === 0) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center text-muted-foreground">
+        <Activity className="mb-2 h-8 w-8 text-muted-foreground/40" />
+        <p className="text-sm font-medium">Provider market data is currently unavailable for this timeframe.</p>
+        <p className="mt-1 text-xs text-muted-foreground/60">
+          Status: <span className="font-semibold uppercase">{marketStatus}</span>. Waiting for live provider feed.
+        </p>
+      </div>
+    );
+  }
+
+  // Panes allocation:
+  // Subpanes: Volume (45px), RSI (55px), MACD (55px)
+  const rsiHeight = indicators.showRsi ? 55 : 0;
+  const macdHeight = indicators.showMacd ? 55 : 0;
   const volumeHeight = indicators.showVolume ? 45 : 0;
-  const totalSubpaneHeight = rsiHeight + macdHeight + volumeHeight;
+  const timeAxisHeight = 24;
+  const totalSubpaneHeight = rsiHeight + macdHeight + volumeHeight + timeAxisHeight;
 
-  const mainHeight = Math.max(containerHeight - totalSubpaneHeight - 30, 160);
-  const paddingRight = 60;
-  const paddingLeft = 10;
-  const plotWidth = containerWidth - paddingRight - paddingLeft;
+  const mainHeight = Math.max(containerHeight - totalSubpaneHeight - 10, 180);
+  const paddingRight = 65; // Price Axis width
+  const paddingLeft = 12;
+  const plotWidth = Math.max(containerWidth - paddingRight - paddingLeft, 100);
 
-  // Price Bounds
+  // Price Bounds Calculation across visible window
   let minPrice = Infinity;
   let maxPrice = -Infinity;
 
   bars.forEach((b) => {
     minPrice = Math.min(minPrice, b.low);
     maxPrice = Math.max(maxPrice, b.high);
-    if (b.bbUpper) maxPrice = Math.max(maxPrice, b.bbUpper);
-    if (b.bbLower) minPrice = Math.min(minPrice, b.bbLower);
-    if (b.sma) {
+    if (b.bbUpper != null) maxPrice = Math.max(maxPrice, b.bbUpper);
+    if (b.bbLower != null) minPrice = Math.min(minPrice, b.bbLower);
+    if (b.sma != null) {
       minPrice = Math.min(minPrice, b.sma);
       maxPrice = Math.max(maxPrice, b.sma);
     }
-    if (b.ema) {
+    if (b.ema != null) {
       minPrice = Math.min(minPrice, b.ema);
       maxPrice = Math.max(maxPrice, b.ema);
     }
+    if (b.vwap != null) {
+      minPrice = Math.min(minPrice, b.vwap);
+      maxPrice = Math.max(maxPrice, b.vwap);
+    }
   });
+
+  if (!isFinite(minPrice) || !isFinite(maxPrice)) {
+    minPrice = currentPrice * 0.95;
+    maxPrice = currentPrice * 1.05;
+  }
 
   const priceMargin = (maxPrice - minPrice) * 0.08 || 1;
   const priceMin = minPrice - priceMargin;
   const priceMax = maxPrice + priceMargin;
   const priceRange = priceMax - priceMin || 1;
 
-  const getX = (i: number) => paddingLeft + (i / Math.max(n - 1, 1)) * plotWidth;
-  const getY = (price: number) => 15 + (1 - (price - priceMin) / priceRange) * (mainHeight - 30);
+  // Geometry coordinate transforms
+  const candleSpacing = plotWidth / Math.max(n, 1);
+  const candleWidth = Math.max(Math.min(candleSpacing * 0.72, 22), 2.5);
 
-  // Candlestick geometry
-  const candleWidth = Math.max(Math.min((plotWidth / n) * 0.75, 16), 3);
+  const getX = (i: number) => paddingLeft + (i + 0.5) * candleSpacing;
+  const getY = (price: number) => 12 + (1 - (price - priceMin) / priceRange) * (mainHeight - 24);
 
-  // Volume Bounds
+  // Volume bounds
   let maxVol = 1;
   bars.forEach((b) => {
     if (b.volume > maxVol) maxVol = b.volume;
   });
 
-  // Generate Area / Line paths
+  // Paths for Line / Area
   const linePath = bars.map((b, i) => `${i === 0 ? 'M' : 'L'} ${getX(i).toFixed(1)} ${getY(b.close).toFixed(1)}`).join(' ');
   const areaPath = `${linePath} L ${getX(n - 1).toFixed(1)} ${mainHeight} L ${getX(0).toFixed(1)} ${mainHeight} Z`;
 
-  // Overlay Paths
+  // Indicator Paths
   const smaPath = indicators.showSma
     ? bars
-        .map((b, i) => (b.sma != null ? `${i === indicators.smaPeriod - 1 ? 'M' : 'L'} ${getX(i).toFixed(1)} ${getY(b.sma).toFixed(1)}` : ''))
+        .map((b, i) => (b.sma != null ? `${i === 0 || bars[i - 1]?.sma == null ? 'M' : 'L'} ${getX(i).toFixed(1)} ${getY(b.sma).toFixed(1)}` : ''))
         .filter(Boolean)
         .join(' ')
     : '';
 
   const emaPath = indicators.showEma
     ? bars
-        .map((b, i) => (b.ema != null ? `${i === indicators.emaPeriod - 1 ? 'M' : 'L'} ${getX(i).toFixed(1)} ${getY(b.ema).toFixed(1)}` : ''))
+        .map((b, i) => (b.ema != null ? `${i === 0 || bars[i - 1]?.ema == null ? 'M' : 'L'} ${getX(i).toFixed(1)} ${getY(b.ema).toFixed(1)}` : ''))
         .filter(Boolean)
         .join(' ')
     : '';
 
   const bbUpperPath = indicators.showBollinger
     ? bars
-        .map((b, i) => (b.bbUpper != null ? `${i === indicators.bbPeriod - 1 ? 'M' : 'L'} ${getX(i).toFixed(1)} ${getY(b.bbUpper).toFixed(1)}` : ''))
+        .map((b, i) => (b.bbUpper != null ? `${i === 0 || bars[i - 1]?.bbUpper == null ? 'M' : 'L'} ${getX(i).toFixed(1)} ${getY(b.bbUpper).toFixed(1)}` : ''))
         .filter(Boolean)
         .join(' ')
     : '';
 
   const bbLowerPath = indicators.showBollinger
     ? bars
-        .map((b, i) => (b.bbLower != null ? `${i === indicators.bbPeriod - 1 ? 'M' : 'L'} ${getX(i).toFixed(1)} ${getY(b.bbLower).toFixed(1)}` : ''))
+        .map((b, i) => (b.bbLower != null ? `${i === 0 || bars[i - 1]?.bbLower == null ? 'M' : 'L'} ${getX(i).toFixed(1)} ${getY(b.bbLower).toFixed(1)}` : ''))
         .filter(Boolean)
         .join(' ')
     : '';
 
   const vwapPath = indicators.showVwap
     ? bars
-        .map((b, i) => (b.vwap != null ? `${i === 0 ? 'M' : 'L'} ${getX(i).toFixed(1)} ${getY(b.vwap).toFixed(1)}` : ''))
+        .map((b, i) => (b.vwap != null ? `${i === 0 || bars[i - 1]?.vwap == null ? 'M' : 'L'} ${getX(i).toFixed(1)} ${getY(b.vwap).toFixed(1)}` : ''))
         .filter(Boolean)
         .join(' ')
     : '';
 
-  // Handle Mouse Move for Crosshair
+  // Wheel zoom / pan handler
+  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    e.preventDefault();
+    const rect = svgRef.current?.getBoundingClientRect();
+    const clientX = rect ? e.clientX - rect.left - paddingLeft : plotWidth / 2;
+    const cursorRatio = Math.max(0, Math.min(clientX / plotWidth, 1));
+
+    if (e.shiftKey) {
+      // Horizontal pan with Shift + Wheel
+      const panDelta = Math.round(e.deltaY / 20) || (e.deltaY > 0 ? 2 : -2);
+      onPan(panDelta);
+    } else {
+      // Zoom in/out around cursor position
+      const zoomDelta = Math.round(e.deltaY / 25) || (e.deltaY > 0 ? 4 : -4);
+      onZoom(zoomDelta, cursorRatio);
+    }
+  };
+
+  // Mouse Drag to Pan
+  const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (e.button !== 0) return; // only left click
+    setIsDragging(true);
+    dragStartRef.current = { clientX: e.clientX };
+  };
+
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     const rect = svgRef.current?.getBoundingClientRect();
     if (!rect) return;
+
+    if (isDragging && dragStartRef.current) {
+      const deltaPixels = e.clientX - dragStartRef.current.clientX;
+      const deltaCandles = Math.round(deltaPixels / candleSpacing);
+      if (Math.abs(deltaCandles) >= 1) {
+        onPan(deltaCandles);
+        dragStartRef.current = { clientX: e.clientX };
+      }
+    }
+
     const clientX = e.clientX - rect.left - paddingLeft;
     const ratio = Math.max(0, Math.min(clientX / plotWidth, 1));
-    const idx = Math.round(ratio * (n - 1));
+    const idx = Math.min(n - 1, Math.max(0, Math.floor(ratio * n)));
     onHoverIndex(idx);
   };
 
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    dragStartRef.current = null;
+  };
+
   const handleMouseLeave = () => {
+    setIsDragging(false);
+    dragStartRef.current = null;
     onHoverIndex(null);
   };
 
-  // Y-axis grid ticks
-  const gridTicks = [0.1, 0.35, 0.65, 0.9].map((pct) => {
+  // Y-axis price ticks (5 evenly spaced price levels)
+  const priceTicks = [0.1, 0.3, 0.5, 0.7, 0.9].map((pct) => {
     const val = priceMin + pct * priceRange;
     const y = getY(val);
     return { val, y };
   });
 
-  const currentSubpaneTop = mainHeight + 10;
+  // X-axis time ticks (5-6 evenly spaced timestamps across visible window)
+  const timeTicks = useMemo(() => {
+    if (n === 0) return [];
+    const count = Math.min(n, 6);
+    const step = Math.max(1, Math.floor(n / count));
+    const ticks: { text: string; x: number }[] = [];
+    for (let i = 0; i < n; i += step) {
+      const dateStr = bars[i]?.time || '';
+      // Format: if intraday (contains space or T with time), show HH:mm; else show MMM DD
+      let label = dateStr;
+      if (dateStr.includes(' ') || dateStr.includes('T')) {
+        const timePart = dateStr.split(/[\sT]/)[1];
+        label = timePart ? timePart.slice(0, 5) : dateStr;
+      } else if (dateStr.length >= 10) {
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          const m = parseInt(parts[1], 10) - 1;
+          label = `${monthNames[m] || parts[1]} ${parts[2]}`;
+        }
+      }
+      ticks.push({ text: label, x: getX(i) });
+    }
+    return ticks;
+  }, [bars, n]);
+
+  // Dynamic pane heights
+  let currentTop = mainHeight;
 
   return (
     <svg
       ref={svgRef}
-      className="h-full w-full cursor-crosshair overflow-visible"
+      className={cn(
+        'h-full w-full select-none overflow-visible',
+        isDragging ? 'cursor-grabbing' : 'cursor-crosshair',
+      )}
+      onWheel={handleWheel}
+      onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
+      onDoubleClick={onResetView}
     >
       <defs>
         <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={isPositive ? '#10B981' : '#EF4444'} stopOpacity="0.3" />
+          <stop offset="0%" stopColor={isPositive ? '#10B981' : '#EF4444'} stopOpacity="0.25" />
           <stop offset="100%" stopColor={isPositive ? '#10B981' : '#EF4444'} stopOpacity="0.0" />
         </linearGradient>
       </defs>
 
-      {/* GRID LINES & Y-AXIS LABELS */}
-      {gridTicks.map(({ val, y }, idx) => (
-        <g key={idx}>
+      {/* BACKGROUND GRID LINES & Y-AXIS PRICE LABELS */}
+      {priceTicks.map(({ val, y }, idx) => (
+        <g key={`price-grid-${idx}`}>
           <line
             x1={paddingLeft}
             y1={y}
@@ -589,11 +877,11 @@ function ChartSvgRenderer({
             y2={y}
             stroke="hsl(var(--border))"
             strokeDasharray="3 3"
-            strokeOpacity="0.5"
+            strokeOpacity="0.45"
           />
           <text
             x={containerWidth - paddingRight + 8}
-            y={y + 4}
+            y={y + 3.5}
             fill="hsl(var(--muted-foreground))"
             fontSize="10"
             fontFamily="monospace"
@@ -603,116 +891,179 @@ function ChartSvgRenderer({
         </g>
       ))}
 
-      {/* BOLLINGER BANDS CLOUD & LINES */}
-      {indicators.showBollinger && (
-        <>
-          <path d={bbUpperPath} fill="none" stroke="#60A5FA" strokeWidth="1" strokeDasharray="2 2" strokeOpacity="0.8" />
-          <path d={bbLowerPath} fill="none" stroke="#60A5FA" strokeWidth="1" strokeDasharray="2 2" strokeOpacity="0.8" />
-        </>
-      )}
+      {/* TIME DIVISION VERTICAL GRID LINES */}
+      {timeTicks.map(({ x }, idx) => (
+        <line
+          key={`time-grid-${idx}`}
+          x1={x}
+          y1={10}
+          x2={x}
+          y2={mainHeight}
+          stroke="hsl(var(--border))"
+          strokeDasharray="3 3"
+          strokeOpacity="0.3"
+        />
+      ))}
 
-      {/* VWAP LINE */}
-      {indicators.showVwap && (
-        <path d={vwapPath} fill="none" stroke="#A855F7" strokeWidth="1.5" strokeOpacity="0.9" />
-      )}
+      {/* RIGHT AXIS SEPARATOR LINE */}
+      <line
+        x1={containerWidth - paddingRight}
+        y1={0}
+        x2={containerWidth - paddingRight}
+        y2={containerHeight}
+        stroke="hsl(var(--border))"
+        strokeOpacity="0.6"
+      />
 
-      {/* SMA LINE */}
-      {indicators.showSma && (
-        <path d={smaPath} fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeOpacity="0.9" />
-      )}
+      {/* BOTTOM SEPARATOR LINE FOR MAIN PRICE PANE */}
+      <line
+        x1={paddingLeft}
+        y1={mainHeight}
+        x2={containerWidth - paddingRight}
+        y2={mainHeight}
+        stroke="hsl(var(--border))"
+        strokeOpacity="0.8"
+      />
 
-      {/* EMA LINE */}
-      {indicators.showEma && (
-        <path d={emaPath} fill="none" stroke="#06B6D4" strokeWidth="1.5" strokeOpacity="0.9" />
-      )}
+      {/* CURRENT LIVE PRICE RAY & BADGE */}
+      {bars.length > 0 && (() => {
+        const lastBar = bars[bars.length - 1];
+        const curY = getY(lastBar.close);
+        const isUp = lastBar.close >= lastBar.open;
+        return (
+          <g>
+            <line
+              x1={paddingLeft}
+              y1={curY}
+              x2={containerWidth - paddingRight}
+              y2={curY}
+              stroke={isUp ? '#10B981' : '#EF4444'}
+              strokeDasharray="2 2"
+              strokeOpacity="0.7"
+              strokeWidth="1.2"
+            />
+            {/* Live Price Tag on Right Price Axis */}
+            <rect
+              x={containerWidth - paddingRight + 2}
+              y={curY - 9}
+              width={56}
+              height={18}
+              fill={isUp ? '#10B981' : '#EF4444'}
+              rx="3"
+            />
+            <text
+              x={containerWidth - paddingRight + 30}
+              y={curY + 3.5}
+              fill="#FFFFFF"
+              fontSize="10"
+              fontWeight="bold"
+              textAnchor="middle"
+              fontFamily="monospace"
+            >
+              {lastBar.close.toFixed(2)}
+            </text>
+          </g>
+        );
+      })()}
 
-      {/* MAIN CHART SERIES */}
+      {/* CHART CONTENT: AREA OR LINE */}
       {chartType === 'area' && (
-        <>
+        <g>
           <path d={areaPath} fill="url(#areaGradient)" />
-          <path d={linePath} fill="none" stroke={isPositive ? '#10B981' : '#EF4444'} strokeWidth="2" />
-        </>
+          <path d={linePath} fill="none" stroke={isPositive ? '#10B981' : '#EF4444'} strokeWidth="2" strokeLinecap="round" />
+        </g>
       )}
 
       {chartType === 'line' && (
-        <path d={linePath} fill="none" stroke={isPositive ? '#10B981' : '#EF4444'} strokeWidth="2" />
+        <path d={linePath} fill="none" stroke={isPositive ? '#10B981' : '#EF4444'} strokeWidth="2" strokeLinecap="round" />
       )}
 
+      {/* CHART CONTENT: CANDLESTICKS */}
       {chartType === 'candles' &&
-        bars.map((bar, i) => {
+        bars.map((b, i) => {
           const x = getX(i);
-          const yOpen = getY(bar.open);
-          const yClose = getY(bar.close);
-          const yHigh = getY(bar.high);
-          const yLow = getY(bar.low);
+          const isUp = b.close >= b.open;
+          const openY = getY(b.open);
+          const closeY = getY(b.close);
+          const highY = getY(b.high);
+          const lowY = getY(b.low);
 
-          const candlePositive = bar.close >= bar.open;
-          const color = candlePositive ? '#10B981' : '#EF4444';
-          const top = Math.min(yOpen, yClose);
-          const height = Math.max(Math.abs(yClose - yOpen), 1.5);
+          const bodyTop = Math.min(openY, closeY);
+          const bodyHeight = Math.max(Math.abs(closeY - openY), 1.5);
+          const candleColor = isUp ? '#10B981' : '#EF4444';
 
           return (
-            <g key={i}>
-              {/* Wick */}
-              <line x1={x} y1={yHigh} x2={x} y2={yLow} stroke={color} strokeWidth="1.2" strokeOpacity="0.9" />
-              {/* Body */}
+            <g key={`candle-${i}`}>
+              {/* High - Low Wick */}
+              <line
+                x1={x}
+                y1={highY}
+                x2={x}
+                y2={lowY}
+                stroke={candleColor}
+                strokeWidth={candleWidth > 6 ? 1.5 : 1}
+                strokeLinecap="round"
+              />
+              {/* Candle Body */}
               <rect
                 x={x - candleWidth / 2}
-                y={top}
+                y={bodyTop}
                 width={candleWidth}
-                height={height}
-                fill={color}
-                rx="1"
+                height={bodyHeight}
+                fill={candleColor}
+                rx={candleWidth > 8 ? 1 : 0}
               />
             </g>
           );
         })}
 
-      {/* VOLUME PANE */}
-      {indicators.showVolume && (
-        <g>
-          <line
-            x1={paddingLeft}
-            y1={currentSubpaneTop}
-            x2={containerWidth - paddingRight}
-            y2={currentSubpaneTop}
-            stroke="hsl(var(--border))"
-            strokeOpacity="0.8"
-          />
-          <text
-            x={paddingLeft + 4}
-            y={currentSubpaneTop + 12}
-            fill="hsl(var(--muted-foreground))"
-            fontSize="9"
-            fontWeight="600"
-          >
-            VOL
-          </text>
-          {bars.map((b, i) => {
-            const x = getX(i);
-            const vHeight = (b.volume / maxVol) * (volumeHeight - 14);
-            const y = currentSubpaneTop + volumeHeight - vHeight;
-            const candlePositive = b.close >= b.open;
-            return (
-              <rect
-                key={`vol-${i}`}
-                x={x - candleWidth / 2}
-                y={y}
-                width={candleWidth}
-                height={vHeight}
-                fill={candlePositive ? '#10B981' : '#EF4444'}
-                opacity={hoverIndex === i ? '0.9' : '0.4'}
-              />
-            );
-          })}
-        </g>
-      )}
+      {/* TECHNICAL INDICATOR OVERLAYS ON PRICE PANE */}
+      {smaPath && <path d={smaPath} fill="none" stroke="#F59E0B" strokeWidth="1.5" />}
+      {emaPath && <path d={emaPath} fill="none" stroke="#06B6D4" strokeWidth="1.5" />}
+      {bbUpperPath && <path d={bbUpperPath} fill="none" stroke="#60A5FA" strokeWidth="1.2" strokeDasharray="3 3" />}
+      {bbLowerPath && <path d={bbLowerPath} fill="none" stroke="#60A5FA" strokeWidth="1.2" strokeDasharray="3 3" />}
+      {vwapPath && <path d={vwapPath} fill="none" stroke="#C084FC" strokeWidth="1.5" />}
 
-      {/* RSI PANE */}
+      {/* SUBPANE 1: VOLUME PANEL */}
+      {indicators.showVolume && (() => {
+        const paneTop = currentTop + 6;
+        currentTop += volumeHeight + 6;
+        const volScaleY = (v: number) => paneTop + volumeHeight - (v / (maxVol || 1)) * (volumeHeight - 8);
+
+        return (
+          <g>
+            <line x1={paddingLeft} y1={paneTop} x2={containerWidth - paddingRight} y2={paneTop} stroke="hsl(var(--border))" strokeOpacity="0.6" />
+            <text x={paddingLeft + 4} y={paneTop + 10} fill="hsl(var(--muted-foreground))" fontSize="9" fontWeight="600">
+              VOL ({(maxVol / 1000).toFixed(0)}k)
+            </text>
+            {bars.map((b, i) => {
+              const x = getX(i);
+              const isUp = b.close >= b.open;
+              const y = volScaleY(b.volume);
+              const h = Math.max(paneTop + volumeHeight - y, 1);
+              return (
+                <rect
+                  key={`vol-${i}`}
+                  x={x - candleWidth / 2}
+                  y={y}
+                  width={candleWidth}
+                  height={h}
+                  fill={isUp ? '#10B981' : '#EF4444'}
+                  opacity="0.55"
+                />
+              );
+            })}
+          </g>
+        );
+      })()}
+
+      {/* SUBPANE 2: RSI PANEL */}
       {indicators.showRsi && (() => {
-        const paneTop = indicators.showVolume ? currentSubpaneTop + volumeHeight + 10 : currentSubpaneTop;
-        const rsiY = (val: number) => paneTop + (1 - val / 100) * rsiHeight;
-        const rsiPath = bars
+        const paneTop = currentTop + 6;
+        currentTop += rsiHeight + 6;
+        const rsiY = (val: number) => paneTop + rsiHeight - (val / 100) * rsiHeight;
+
+        const rsiLinePath = bars
           .map((b, i) => (b.rsi != null ? `${i === indicators.rsiPeriod ? 'M' : 'L'} ${getX(i).toFixed(1)} ${rsiY(b.rsi).toFixed(1)}` : ''))
           .filter(Boolean)
           .join(' ');
@@ -720,26 +1071,21 @@ function ChartSvgRenderer({
         return (
           <g>
             <line x1={paddingLeft} y1={paneTop} x2={containerWidth - paddingRight} y2={paneTop} stroke="hsl(var(--border))" strokeOpacity="0.8" />
-            <text x={paddingLeft + 4} y={paneTop + 12} fill="#818CF8" fontSize="9" fontWeight="600">
+            <text x={paddingLeft + 4} y={paneTop + 10} fill="#818CF8" fontSize="9" fontWeight="600">
               RSI ({indicators.rsiPeriod})
             </text>
-            {/* 70/30 reference lines */}
-            <line x1={paddingLeft} y1={rsiY(70)} x2={containerWidth - paddingRight} y2={rsiY(70)} stroke="#EF4444" strokeDasharray="2 2" strokeOpacity="0.5" />
-            <line x1={paddingLeft} y1={rsiY(30)} x2={containerWidth - paddingRight} y2={rsiY(30)} stroke="#10B981" strokeDasharray="2 2" strokeOpacity="0.5" />
-            <text x={containerWidth - paddingRight + 4} y={rsiY(70) + 3} fill="#EF4444" fontSize="8">70</text>
-            <text x={containerWidth - paddingRight + 4} y={rsiY(30) + 3} fill="#10B981" fontSize="8">30</text>
-            <path d={rsiPath} fill="none" stroke="#818CF8" strokeWidth="1.5" />
+            {/* Overbought 70 and Oversold 30 lines */}
+            <line x1={paddingLeft} y1={rsiY(70)} x2={containerWidth - paddingRight} y2={rsiY(70)} stroke="#EF4444" strokeDasharray="2 2" strokeOpacity="0.6" />
+            <line x1={paddingLeft} y1={rsiY(30)} x2={containerWidth - paddingRight} y2={rsiY(30)} stroke="#10B981" strokeDasharray="2 2" strokeOpacity="0.6" />
+            <path d={rsiLinePath} fill="none" stroke="#818CF8" strokeWidth="1.5" />
           </g>
         );
       })()}
 
-      {/* MACD PANE */}
+      {/* SUBPANE 3: MACD PANEL */}
       {indicators.showMacd && (() => {
-        const paneTop =
-          currentSubpaneTop +
-          (indicators.showVolume ? volumeHeight + 10 : 0) +
-          (indicators.showRsi ? rsiHeight + 10 : 0);
-
+        const paneTop = currentTop + 6;
+        currentTop += macdHeight + 6;
         let macdMax = 1;
         bars.forEach((b) => {
           if (b.macd != null) macdMax = Math.max(macdMax, Math.abs(b.macd));
@@ -762,7 +1108,7 @@ function ChartSvgRenderer({
         return (
           <g>
             <line x1={paddingLeft} y1={paneTop} x2={containerWidth - paddingRight} y2={paneTop} stroke="hsl(var(--border))" strokeOpacity="0.8" />
-            <text x={paddingLeft + 4} y={paneTop + 12} fill="#F43F5E" fontSize="9" fontWeight="600">
+            <text x={paddingLeft + 4} y={paneTop + 10} fill="#FB7185" fontSize="9" fontWeight="600">
               MACD (12, 26, 9)
             </text>
             <line x1={paddingLeft} y1={paneTop + macdHeight / 2} x2={containerWidth - paddingRight} y2={paneTop + macdHeight / 2} stroke="hsl(var(--border))" strokeDasharray="2 2" strokeOpacity="0.5" />
@@ -794,21 +1140,37 @@ function ChartSvgRenderer({
         );
       })()}
 
-      {/* CROSSHAIR CURSOR & TRACKER */}
+      {/* TIME AXIS LABELS AT BOTTOM */}
+      {timeTicks.map(({ text, x }, idx) => (
+        <text
+          key={`time-tick-${idx}`}
+          x={x}
+          y={containerHeight - 6}
+          fill="hsl(var(--muted-foreground))"
+          fontSize="10"
+          textAnchor="middle"
+          fontFamily="monospace"
+        >
+          {text}
+        </text>
+      ))}
+
+      {/* INTERACTIVE CROSSHAIR CURSOR & AXIS PILLS */}
       {hoverIndex !== null && hoverIndex >= 0 && hoverIndex < n && (
         <g>
-          {/* Vertical line */}
+          {/* Vertical Crosshair Line */}
           <line
             x1={getX(hoverIndex)}
             y1={0}
             x2={getX(hoverIndex)}
-            y2={containerHeight}
+            y2={containerHeight - timeAxisHeight}
             stroke="hsl(var(--foreground))"
             strokeDasharray="3 3"
-            strokeOpacity="0.6"
+            strokeOpacity="0.5"
             strokeWidth="1"
           />
-          {/* Horizontal line */}
+
+          {/* Horizontal Crosshair Line */}
           <line
             x1={paddingLeft}
             y1={getY(bars[hoverIndex].close)}
@@ -816,21 +1178,22 @@ function ChartSvgRenderer({
             y2={getY(bars[hoverIndex].close)}
             stroke="hsl(var(--foreground))"
             strokeDasharray="3 3"
-            strokeOpacity="0.6"
+            strokeOpacity="0.5"
             strokeWidth="1"
           />
-          {/* Active Price Badge on Right Axis */}
+
+          {/* Crosshair Price Badge on Right Axis */}
           <rect
             x={containerWidth - paddingRight + 2}
             y={getY(bars[hoverIndex].close) - 9}
-            width={52}
+            width={56}
             height={18}
             fill="hsl(var(--foreground))"
             rx="3"
           />
           <text
-            x={containerWidth - paddingRight + 28}
-            y={getY(bars[hoverIndex].close) + 3}
+            x={containerWidth - paddingRight + 30}
+            y={getY(bars[hoverIndex].close) + 3.5}
             fill="hsl(var(--background))"
             fontSize="10"
             fontWeight="bold"
@@ -838,6 +1201,27 @@ function ChartSvgRenderer({
             fontFamily="monospace"
           >
             {bars[hoverIndex].close.toFixed(2)}
+          </text>
+
+          {/* Crosshair Date/Time Pill on Bottom Time Axis */}
+          <rect
+            x={getX(hoverIndex) - 38}
+            y={containerHeight - timeAxisHeight + 2}
+            width={76}
+            height={16}
+            fill="hsl(var(--foreground))"
+            rx="3"
+          />
+          <text
+            x={getX(hoverIndex)}
+            y={containerHeight - timeAxisHeight + 13}
+            fill="hsl(var(--background))"
+            fontSize="9"
+            fontWeight="bold"
+            textAnchor="middle"
+            fontFamily="monospace"
+          >
+            {bars[hoverIndex].time.length > 10 ? bars[hoverIndex].time.split(/[\sT]/)[1]?.slice(0, 5) || bars[hoverIndex].time.slice(0, 10) : bars[hoverIndex].time}
           </text>
         </g>
       )}

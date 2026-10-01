@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 
 export default function AccountPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [showDeactivate, setShowDeactivate] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
 
@@ -87,7 +87,15 @@ export default function AccountPage() {
             <p className="text-sm font-semibold">Logout From All Devices</p>
             <p className="text-xs text-muted-foreground">Sign out of all active sessions across all devices</p>
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => {
+              logout();
+              navigate('/login', { replace: true });
+            }}
+          >
             <LogOut className="h-3.5 w-3.5" />
             Logout All
           </Button>

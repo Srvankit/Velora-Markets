@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -20,6 +20,7 @@ import {
 import { SIDEBAR_LINKS, APP } from '@/constants';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/auth-context';
 
 const iconMap: Record<string, typeof LayoutDashboard> = {
   LayoutDashboard,
@@ -42,6 +43,13 @@ const bottomLinks = [
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <aside
@@ -119,7 +127,7 @@ export function Sidebar() {
         <Button
           variant="ghost"
           className={cn('w-full justify-start gap-3 text-muted-foreground hover:text-danger', collapsed && 'px-0')}
-          onClick={() => {}}
+          onClick={handleLogout}
         >
           <LogOut className="h-5 w-5 shrink-0" />
           {!collapsed && <span>Logout</span>}

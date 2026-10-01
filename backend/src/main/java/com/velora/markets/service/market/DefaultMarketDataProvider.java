@@ -48,7 +48,7 @@ public class DefaultMarketDataProvider implements MarketDataProvider {
 
     @Override
     public List<HistoricalBarResponse> fetchHistoricalBars(Stock stock, String timeframe) {
-        int points = getPointsForTimeframe(timeframe);
+        String tf = timeframe != null ? timeframe.toUpperCase() : "1M";
         double current = stock.getPrice().doubleValue();
         double prev = stock.getPreviousClose().doubleValue();
         double open = stock.getOpenPrice() != null ? stock.getOpenPrice().doubleValue() : prev;
@@ -59,24 +59,33 @@ public class DefaultMarketDataProvider implements MarketDataProvider {
         List<HistoricalBarResponse> bars = new ArrayList<>();
         LocalDate today = LocalDate.now();
 
-        // Historical reference bars anchoring to canonical stock prices
-        int symbolHash = Math.abs(stock.getSymbol().hashCode());
-        double trend = (current - prev) / (points > 1 ? points : 1);
+        // For 1D without live provider feed, return the single canonical day session bar
+        if ("1D".equals(tf)) {
+            bars.add(new HistoricalBarResponse(
+                today.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                bd(open),
+                bd(high),
+                bd(low),
+                bd(current),
+                vol
+            ));
+            return bars;
+        }
+
+        int points = getPointsForTimeframe(tf);
+        double step = (current - prev) / (points > 1 ? points : 1);
 
         for (int i = points - 1; i >= 0; i--) {
             LocalDate date = today.minusDays(i);
-            // Skip weekends
             if (date.getDayOfWeek().getValue() == 6 || date.getDayOfWeek().getValue() == 7) {
                 continue;
             }
 
-            double progress = (double) (points - 1 - i) / (points > 1 ? points - 1 : 1);
-            double cycle = Math.sin((i + symbolHash % 17) * 0.45) * (current * 0.012);
-            double barClose = (i == 0) ? current : (prev - (trend * i) + cycle);
-            double barOpen = (i == 0) ? open : (barClose - (trend * 0.5) + (Math.cos(i) * current * 0.006));
-            double barHigh = (i == 0) ? Math.max(high, Math.max(barOpen, barClose)) : Math.max(barOpen, barClose) + Math.abs(Math.sin(i * 1.3)) * (current * 0.008);
-            double barLow = (i == 0) ? Math.min(low, Math.min(barOpen, barClose)) : Math.min(barOpen, barClose) - Math.abs(Math.cos(i * 1.7)) * (current * 0.008);
-            long barVol = (long) (vol * (0.7 + (Math.abs(Math.sin(i)) * 0.6)));
+            double barClose = (i == 0) ? current : (prev - (step * i));
+            double barOpen = (i == 0) ? open : (barClose - (step * 0.4));
+            double barHigh = (i == 0) ? Math.max(high, Math.max(barOpen, barClose)) : Math.max(barOpen, barClose) + Math.abs(current * 0.004);
+            double barLow = (i == 0) ? Math.min(low, Math.min(barOpen, barClose)) : Math.min(barOpen, barClose) - Math.abs(current * 0.004);
+            long barVol = (long) (vol * (0.8 + (0.4 * (i % 3))));
 
             bars.add(new HistoricalBarResponse(
                 date.format(DateTimeFormatter.ISO_LOCAL_DATE),

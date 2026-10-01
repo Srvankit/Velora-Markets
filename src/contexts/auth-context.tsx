@@ -88,7 +88,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     finally { setIsLoading(false); }
   }, []);
 
-  const logout = useCallback(() => { setSession(null); localStorage.removeItem(AUTH_STORAGE_KEY); }, []);
+  const logout = useCallback(() => {
+    setSession(null);
+    persistSession(null);
+    try {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      localStorage.removeItem('velora_token');
+      localStorage.removeItem('velora_user');
+      localStorage.removeItem('velora_auth_session');
+      sessionStorage.clear();
+    } catch (e) {
+      console.error('Logout error clearing storage:', e);
+    }
+  }, []);
   const loginWithProvider = useCallback(async (_provider: 'google' | 'github') => { throw new Error('Social sign-in is not connected to the backend yet.'); }, []);
   const verifyEmail = useCallback(async () => { await sleep(300); setSession((p) => p ? { ...p, user: { ...p.user, emailVerified: true } } : p); }, []);
   const sendPasswordReset = useCallback(async (_email: string) => { throw new Error('Password reset API is not implemented yet.'); }, []);
