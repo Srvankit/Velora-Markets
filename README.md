@@ -10,6 +10,8 @@ Requires **Java 21** and **Maven**.
 
 ```bash
 cd backend
+$env:SPRING_PROFILES_ACTIVE="local"
+$env:JWT_SECRET="replace-with-a-local-secret-at-least-256-bits"
 mvn spring-boot:run
 ```
 
