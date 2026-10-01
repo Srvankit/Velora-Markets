@@ -884,7 +884,7 @@ function ChartSvgRenderer({
   });
 
   // X-axis time ticks (5-6 evenly spaced timestamps across visible window)
-  const timeTicks = useMemo(() => {
+  const timeTicks = (() => {
     if (n === 0) return [];
     const count = Math.min(n, 6);
     const step = Math.max(1, Math.floor(n / count));
@@ -907,7 +907,7 @@ function ChartSvgRenderer({
       ticks.push({ text: label, x: getX(i) });
     }
     return ticks;
-  }, [bars, n]);
+  })();
 
   // Dynamic pane heights
   let currentTop = mainHeight;
