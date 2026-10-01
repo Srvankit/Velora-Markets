@@ -33,6 +33,7 @@ velora:
   market:
     fmp:
       api-key: ${FMP_API_KEY:}
+      websocket-endpoint: ${FMP_WEBSOCKET_ENDPOINT:wss://websockets.financialmodelingprep.com/ws}
   cors:
     allowed-origins: http://localhost:5173,http://localhost:4173,http://127.0.0.1:5173
 
@@ -40,3 +41,4 @@ logging:
   level:
     org.springframework.security: WARN
     com.velora.markets: INFO
+    com.velora.markets.service.market.FmpWebSocketMarketService: DEBUG
