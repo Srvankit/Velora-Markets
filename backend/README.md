@@ -6,18 +6,37 @@ Spring Boot 3 paper-trading API that powers the Velora Markets frontend.
 
 - Java 21
 - Spring Boot 3.3 (Web, Security, Data JPA, Validation)
-- H2 file database (auto-seeded stock catalog)
+- PostgreSQL/Supabase in production; H2 file database for local development
 - JWT Bearer authentication
 
 ## Quick start
 
 ```bash
 cd backend
+$env:SPRING_PROFILES_ACTIVE="local"
+$env:JWT_SECRET="replace-with-a-local-secret-at-least-256-bits"
 mvn spring-boot:run
 ```
 
 API base: `http://localhost:8080/api/v1`  
 H2 console: `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:file:./data/velora`)
+
+The default `application.yml` is production-oriented and requires PostgreSQL
+environment variables. The `local` profile is the only profile that enables
+H2. Set `SPRING_PROFILES_ACTIVE=local` for local development; never enable it
+in production.
+
+For production, configure these environment variables:
+
+```env
+SPRING_DATASOURCE_URL=jdbc:postgresql://<host>:5432/<database>?sslmode=require
+SPRING_DATASOURCE_USERNAME=<database-user>
+SPRING_DATASOURCE_PASSWORD=<database-password>
+JWT_SECRET=<secret-at-least-256-bits>
+CORS_ALLOWED_ORIGINS=https://your-frontend.example
+FMP_API_KEY=<fmp-api-key>
+FMP_WEBSOCKET_ENDPOINT=wss://websockets.financialmodelingprep.com/ws
+```
 
 ## Frontend wiring
 
