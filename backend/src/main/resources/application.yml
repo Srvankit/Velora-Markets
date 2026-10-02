@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 spring:
   application:
@@ -9,10 +9,25 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 30000
+      validation-timeout: 5000
+      idle-timeout: 600000
+      max-lifetime: 1500000
+      keepalive-time: 240000
+      data-source-properties:
+        sslmode: require
+        tcpKeepAlive: true
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
   jackson:
     serialization:
       write-dates-as-timestamps: false
@@ -29,6 +44,16 @@ velora:
       websocket-endpoint: ${FMP_WEBSOCKET_ENDPOINT:wss://websockets.financialmodelingprep.com/ws}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
 
 logging:
   level:
