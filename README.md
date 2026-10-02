@@ -10,6 +10,8 @@ Requires **Java 21** and **Maven**.
 
 ```bash
 cd backend
+set SPRING_PROFILES_ACTIVE=local
+set JWT_SECRET=local-development-secret-key-at-least-32-bytes
 mvn spring-boot:run
 ```
 
@@ -24,6 +26,22 @@ npm run dev
 ```
 
 App: `http://localhost:5173`
+
+### Local backend profile
+
+The production profile requires PostgreSQL environment variables. For local
+development, activate the `local` profile, which uses H2 and provides safe
+defaults for JWT, CORS, and FMP configuration:
+
+```bash
+cd backend
+set SPRING_PROFILES_ACTIVE=local
+set JWT_SECRET=local-development-secret-key-at-least-32-bytes
+mvn spring-boot:run
+```
+
+The `local` profile does not weaken production security; the production profile
+still requires `JWT_SECRET` and Supabase PostgreSQL environment variables.
 
 ## Features
 
