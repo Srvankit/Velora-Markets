@@ -18,8 +18,11 @@ spring:
       max-lifetime: 1500000
       keepalive-time: 240000
       data-source-properties:
-        sslmode: require
+        ssl: true
+        sslmode: verify-full
         tcpKeepAlive: true
+        prepareThreshold: 0
+        sslrootcert: /etc/ssl/certs/ca-certificates.crt
   jpa:
     hibernate:
       ddl-auto: update
