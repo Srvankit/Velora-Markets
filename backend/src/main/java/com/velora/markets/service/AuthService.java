@@ -121,7 +121,8 @@ public class AuthService {
         ledgerEntry.setTimestamp(Instant.now());
         walletLedgerRepository.save(ledgerEntry);
 
-        return mapper.toAuthResponse(user, null, "Account created successfully");
+        String token = jwtService.generateToken(new UserPrincipal(user));
+        return mapper.toAuthResponse(user, token, "Account created successfully");
     }
 
     @Transactional

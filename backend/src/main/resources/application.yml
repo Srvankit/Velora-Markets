@@ -1,59 +1,44 @@
 server:
   port: ${PORT:8080}
+  address: 0.0.0.0
 
 spring:
   application:
     name: velora-markets
-  datasource:
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
-    driver-class-name: org.postgresql.Driver
-    hikari:
-      maximum-pool-size: 5
-      minimum-idle: 1
-      connection-timeout: 30000
-      validation-timeout: 5000
-      idle-timeout: 300000
-      max-lifetime: 600000
-      keepalive-time: 60000
-      connection-test-query: SELECT 1
-      data-source-properties:
-        ssl: true
-        sslmode: require
-        tcpKeepAlive: true
-        prepareThreshold: 0
+  profiles:
+    default: local
+    active: ${SPRING_PROFILES_ACTIVE:local}
   jpa:
-    hibernate:
-      ddl-auto: update
     show-sql: false
     open-in-view: false
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
+        jdbc:
+          lob:
+            non_contextual_creation: true
   jackson:
     serialization:
       write-dates-as-timestamps: false
 
 velora:
   jwt:
-    secret: ${JWT_SECRET}
-    expiration-ms: 86400000
+    secret: ${JWT_SECRET:velora-markets-super-secure-production-jwt-key-32chars}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   portfolio:
-    starting-cash: 100000.00
+    starting-cash: ${VELORA_PORTFOLIO_STARTING_CASH:100000.00}
   market:
     fmp:
       api-key: ${FMP_API_KEY:}
       websocket-endpoint: ${FMP_WEBSOCKET_ENDPOINT:wss://websockets.financialmodelingprep.com/ws}
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:4173,http://127.0.0.1:5173,https://velora-markets.pages.dev}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,info
   endpoint:
     health:
       probes:

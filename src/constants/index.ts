@@ -11,13 +11,40 @@ export const APP = {
   version: '1.0.0',
 } as const;
 
+/**
+ * Resolves the backend base URL cleanly:
+ * Handles:
+ * - Empty / undefined -> '/api'
+ * - 'http://localhost:8080' -> 'http://localhost:8080/api'
+ * - 'http://localhost:8080/api' -> 'http://localhost:8080/api'
+ * - 'https://velora-backend.onrender.com' -> 'https://velora-backend.onrender.com/api'
+ * - 'https://velora-backend.onrender.com/api' -> 'https://velora-backend.onrender.com/api'
+ * - Trailing slashes stripped
+ */
+export function getNormalizedApiBaseUrl(): string {
+  const envUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+  if (!envUrl) {
+    return '/api';
+  }
+  const clean = envUrl.replace(/\/+$/, '');
+  if (clean.endsWith('/api/v1')) {
+    return clean.slice(0, -3);
+  }
+  if (clean.endsWith('/api')) {
+    return clean;
+  }
+  if (clean.endsWith('/v1')) {
+    return clean.replace(/\/v1$/, '/api');
+  }
+  return `${clean}/api`;
+}
+
 export const API_CONFIG = {
-  // Keep browser requests same-origin by default so Vite's /api proxy works
-  // locally and deployments do not accidentally call the user's localhost.
-  baseURL: import.meta.env.VITE_API_BASE_URL?.trim() || '/api',
+  baseURL: getNormalizedApiBaseUrl(),
   timeout: 15000,
   version: 'v1',
 } as const;
+
 
 export const STORAGE_KEYS = {
   theme: 'velora-theme',

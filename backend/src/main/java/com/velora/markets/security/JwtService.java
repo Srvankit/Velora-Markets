@@ -17,16 +17,19 @@ public class JwtService {
     private final long expirationMs;
 
     public JwtService(
-        @Value("${velora.jwt.secret}") String secret,
-        @Value("${velora.jwt.expiration-ms}") long expirationMs
+        @Value("${velora.jwt.secret:velora-markets-super-secure-production-jwt-key-32chars}") String secret,
+        @Value("${velora.jwt.expiration-ms:86400000}") long expirationMs
     ) {
         byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
         if (bytes.length < 32) {
-            bytes = Decoders.BASE64.decode(
-                java.util.Base64.getEncoder().encodeToString(bytes)
-            );
+            try {
+                java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+                bytes = md.digest(bytes);
+            } catch (Exception e) {
+                bytes = pad(bytes);
+            }
         }
-        this.key = Keys.hmacShaKeyFor(bytes.length >= 32 ? bytes : pad(bytes));
+        this.key = Keys.hmacShaKeyFor(bytes);
         this.expirationMs = expirationMs;
     }
 
