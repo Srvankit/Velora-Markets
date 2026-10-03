@@ -22,6 +22,10 @@ spring:
         reWriteBatchedInserts: true
         connectTimeout: 10
         socketTimeout: 30
+  sql:
+    init:
+      mode: always
+      continue-on-error: true
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
