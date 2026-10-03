@@ -14,20 +14,21 @@ spring:
       minimum-idle: 1
       connection-timeout: 30000
       validation-timeout: 5000
-      idle-timeout: 600000
-      max-lifetime: 1500000
-      keepalive-time: 240000
+      idle-timeout: 300000
+      max-lifetime: 600000
+      keepalive-time: 60000
+      connection-test-query: SELECT 1
       data-source-properties:
         ssl: true
-        sslmode: verify-full
+        sslmode: require
         tcpKeepAlive: true
         prepareThreshold: 0
-        sslrootcert: /etc/ssl/certs/ca-certificates.crt
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: false
     open-in-view: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     properties:
       hibernate:
         format_sql: true
