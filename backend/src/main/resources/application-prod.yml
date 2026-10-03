@@ -5,22 +5,34 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
+      pool-name: VeloraProdHikariPool
       maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:5}
       minimum-idle: ${HIKARI_MIN_IDLE:1}
       connection-timeout: 30000
       validation-timeout: 5000
-      idle-timeout: 60000
-      max-lifetime: 120000
+      idle-timeout: 30000
+      max-lifetime: 60000
       keepalive-time: 30000
       connection-test-query: SELECT 1
+      leak-detection-threshold: 60000
       data-source-properties:
-        tcpKeepAlive: true
         prepareThreshold: 0
+        preferQueryMode: simple
+        tcpKeepAlive: true
+        reWriteBatchedInserts: true
+        connectTimeout: 10
+        socketTimeout: 30
   jpa:
-    hibernate:
-      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
     database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:none}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        boot:
+          allow_jdbc_metadata_access: false
         format_sql: false
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
