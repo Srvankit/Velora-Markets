@@ -14,4 +14,13 @@ public final class SecurityUtils {
         }
         return principal;
     }
+
+    public static java.util.Optional<UserPrincipal> currentUserOptional() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal principal) {
+            return java.util.Optional.of(principal);
+        }
+        return java.util.Optional.empty();
+    }
 }
+

@@ -38,10 +38,10 @@ public class BillingService {
 
     @Transactional(readOnly = true)
     public List<BillingPlanResponse> getPlans() {
-        User user = currentUser();
-        String currentTier = user.getSubscriptionTier() != null ? user.getSubscriptionTier().toUpperCase() : "STANDARD";
+        User user = currentUserOrNull();
+        String currentTier = user != null && user.getSubscriptionTier() != null ? user.getSubscriptionTier().toUpperCase() : "STANDARD";
         if ("FREE".equals(currentTier)) currentTier = "STANDARD";
-        String currency = user.getCurrency() != null ? user.getCurrency() : "INR";
+        String currency = user != null && user.getCurrency() != null ? user.getCurrency() : "USD";
         boolean isUsd = "USD".equalsIgnoreCase(currency);
 
         return List.of(
@@ -101,6 +101,7 @@ public class BillingService {
             )
         );
     }
+
 
     @Transactional(readOnly = true)
     public SubscriptionResponse getCurrentSubscription() {
@@ -193,4 +194,11 @@ public class BillingService {
         return userRepository.findById(id)
             .orElseThrow(() -> new ApiException("User not found", HttpStatus.NOT_FOUND));
     }
+
+    private User currentUserOrNull() {
+        return SecurityUtils.currentUserOptional()
+            .flatMap(p -> userRepository.findById(p.getId()))
+            .orElse(null);
+    }
 }
+

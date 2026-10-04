@@ -6,7 +6,6 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { PreferencePanel } from '@/components/user/PreferencePanel';
 import { ExportGrid } from '@/components/user/ExportCard';
-import { userProfile } from '@/data/profile';
 import { notificationPreferences } from '@/data/notifications';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -98,14 +97,14 @@ function AccountSettings() {
 
   
   const [form, setForm] = useState({
-    fullName: userProfile.fullName,
-    username: userProfile.username,
-    email: userProfile.email,
-    phone: userProfile.phone,
+    fullName: '',
+    username: '',
+    email: '',
+    phone: '',
     language: 'English (US)',
-    region: userProfile.country,
-    currency: userProfile.currency,
-    timezone: userProfile.timezone,
+    region: '',
+    currency: 'USD',
+    timezone: 'UTC',
   });
 
   const loadProfile = useCallback(async () => {
@@ -114,11 +113,12 @@ function AccountSettings() {
 
       setForm((prev) => ({
         ...prev,
-        fullName: user.fullName,
-        username: user.username,
-        email: user.email,
+        fullName: user.fullName || '',
+        username: user.username || '',
+        email: user.email || '',
         phone: user.phone ?? '',
         region: user.country ?? '',
+        currency: user.currency ?? 'USD',
       }));
     } finally {
       setLoading(false);

@@ -29,7 +29,15 @@ export function mergeMarketStock(
       backendStock.symbol.toUpperCase(),
   );
 
-  const prevClose = backendStock.previousClose ?? (backendStock.price - backendStock.change);
+  const price = typeof backendStock.price === 'number' ? backendStock.price : (local?.price ?? 0);
+  const change = typeof backendStock.change === 'number' ? backendStock.change : (local?.change ?? 0);
+  const prevClose = typeof backendStock.previousClose === 'number' 
+    ? backendStock.previousClose 
+    : (local?.previousClose ?? (price - change));
+  const changePercent = typeof backendStock.changePercent === 'number'
+    ? backendStock.changePercent
+    : (local?.changePercent ?? (prevClose !== 0 ? ((price - prevClose) / prevClose) * 100 : 0));
+  const volume = typeof backendStock.volume === 'number' ? backendStock.volume : (local?.volume ?? 0);
 
   if (!local) {
     return {
@@ -38,18 +46,18 @@ export function mergeMarketStock(
       exchange: backendStock.exchange || 'NSE',
       sector: backendStock.sector || 'Equities',
       currency: backendStock.currency || (backendStock.exchange === 'NASDAQ' || backendStock.exchange === 'NYSE' ? 'USD' : 'INR'),
-      price: backendStock.price,
-      change: backendStock.change,
-      changePercent: backendStock.changePercent,
-      volume: backendStock.volume,
+      price,
+      change,
+      changePercent,
+      volume,
       open: backendStock.open ?? prevClose,
-      high: backendStock.high ?? Math.max(backendStock.price, prevClose),
-      low: backendStock.low ?? Math.min(backendStock.price, prevClose),
+      high: backendStock.high ?? Math.max(price, prevClose),
+      low: backendStock.low ?? Math.min(price, prevClose),
       previousClose: prevClose,
       marketStatus: backendStock.marketStatus ?? 'LIVE',
       timestamp: backendStock.timestamp,
       marketCap: 0,
-      sparkline: [prevClose, backendStock.price],
+      sparkline: [prevClose, price],
       logoColor: '#6366F1',
       capSize: 'Large Cap',
     };
@@ -62,22 +70,23 @@ export function mergeMarketStock(
     exchange: backendStock.exchange || local.exchange,
     sector: backendStock.sector || local.sector,
     currency: backendStock.currency || local.currency,
-    price: backendStock.price,
-    change: backendStock.change,
-    changePercent: backendStock.changePercent,
-    volume: backendStock.volume,
+    price,
+    change,
+    changePercent,
+    volume,
     open: backendStock.open ?? local.open ?? prevClose,
-    high: backendStock.high ?? local.high ?? Math.max(backendStock.price, prevClose),
-    low: backendStock.low ?? local.low ?? Math.min(backendStock.price, prevClose),
+    high: backendStock.high ?? local.high ?? Math.max(price, prevClose),
+    low: backendStock.low ?? local.low ?? Math.min(price, prevClose),
     previousClose: prevClose,
     marketStatus: backendStock.marketStatus ?? local.marketStatus ?? 'LIVE',
     timestamp: backendStock.timestamp,
     sparkline: buildSparkline(
       local.sparkline,
-      backendStock.price,
+      price,
     ),
   };
 }
+
 
 export function mergeMarketStocks(
   backendStocks: BackendMarketStock[],

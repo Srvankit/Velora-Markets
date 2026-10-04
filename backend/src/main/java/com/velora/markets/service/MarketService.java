@@ -93,19 +93,7 @@ public class MarketService {
                 return live;
             }
         }
-        return unavailableQuote(stock);
-    }
-
-    private MarketStockResponse unavailableQuote(Stock stock) {
-        MarketStockResponse response = new MarketStockResponse();
-        response.setSymbol(stock.getSymbol());
-        response.setCompanyName(stock.getCompanyName());
-        response.setExchange(stock.getExchange().name());
-        response.setSector(stock.getSector());
-        response.setCurrency(stock.getCurrency());
-        response.setMarketStatus("DATA_UNAVAILABLE");
-        response.setTimestamp(java.time.Instant.now().toString());
-        return response;
+        return mapper.toMarketStock(stock);
     }
 
     private List<MarketStockResponse> rankedByChange(boolean ascending) {
@@ -120,6 +108,9 @@ public class MarketService {
     }
 
     private BigDecimal changePercent(Stock stock) {
+        if (stock == null || stock.getPrice() == null || stock.getPreviousClose() == null) {
+            return BigDecimal.ZERO;
+        }
         if (stock.getPreviousClose().compareTo(BigDecimal.ZERO) == 0) {
             return BigDecimal.ZERO;
         }
@@ -128,3 +119,4 @@ public class MarketService {
             .divide(stock.getPreviousClose(), 6, RoundingMode.HALF_UP);
     }
 }
+

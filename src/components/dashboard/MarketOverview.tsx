@@ -92,8 +92,10 @@ export function MarketOverview() {
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
 
       {stocks.map((stock, i) => {
-        const positive =
-          stock.change >= 0;
+        const price = stock.price ?? 0;
+        const change = stock.change ?? 0;
+        const changePercent = stock.changePercent ?? 0;
+        const positive = change >= 0;
 
         return (
           <motion.div
@@ -138,7 +140,7 @@ export function MarketOverview() {
 
               <p className="mt-2 font-display text-base font-bold tracking-tight">
                 {formatCurrency(
-                  stock.price,
+                  price,
                 )}
               </p>
 
@@ -162,7 +164,7 @@ export function MarketOverview() {
                   )}
 
                   {positive ? '+' : ''}
-                  {stock.changePercent.toFixed(
+                  {changePercent.toFixed(
                     2,
                   )}
                   %
@@ -176,6 +178,7 @@ export function MarketOverview() {
           </motion.div>
         );
       })}
+
 
     </div>
   );
