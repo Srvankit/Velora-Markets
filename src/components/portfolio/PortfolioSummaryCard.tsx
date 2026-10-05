@@ -47,10 +47,12 @@ const cardIcons: Record<string, LucideIcon> = {
   'Net Worth': ShieldCheck,
 };
 
+import { getCurrencySymbol } from '@/lib/currency';
+
 export function PortfolioSummaryCard({
   label,
   value,
-  prefix = '₹',
+  prefix = getCurrencySymbol(),
   decimals = 2,
   change,
   changePercent,

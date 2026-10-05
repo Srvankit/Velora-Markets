@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { TradeOrder, Holding, Position, OrderSide, OrderType, OrderValidity, ProductType, ChargeBreakdown } from '@/types/trading';
 import { calculateCharges } from '@/lib/trading-calc';
+import { formatCurrency } from '@/lib/format';
 import { backendApi, getApiErrorMessage, type BackendOrder, type BackendPortfolio } from '@/services/backend';
 import { useAuth } from '@/contexts/auth-context';
 
@@ -23,7 +24,7 @@ function mapOrder(o: BackendOrder): TradeOrder {
   const price = o.executionPrice ?? o.limitPrice ?? 0;
   return { id: String(o.orderId), symbol: o.symbol, name: o.companyName, side: o.side.toLowerCase() as OrderSide, quantity: o.quantity, price,
     orderType: o.orderType.toLowerCase() as OrderType, productType: 'delivery', validity: 'day', charges: zeroCharges, total: o.totalAmount ?? 0, status,
-    createdAt: o.createdAt, executedAt: o.executedAt ?? undefined, timeline: [{ status: 'submitted', timestamp: o.createdAt, note: 'Order submitted' }, ...(o.executedAt ? [{ status: 'completed' as const, timestamp: o.executedAt, note: `Order executed at ₹${price.toFixed(2)}` }] : [])] };
+    createdAt: o.createdAt, executedAt: o.executedAt ?? undefined, timeline: [{ status: 'submitted', timestamp: o.createdAt, note: 'Order submitted' }, ...(o.executedAt ? [{ status: 'completed' as const, timestamp: o.executedAt, note: `Order executed at ${formatCurrency(price)}` }] : [])] };
 }
 
 export function TradingProvider({ children }: { children: ReactNode }) {

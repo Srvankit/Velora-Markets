@@ -1,14 +1,15 @@
 import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import type { StockKeyMetrics } from '@/data/stockDetails';
-import { formatNumber } from '@/lib/format';
+import { formatNumber, formatCurrency } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 interface MetricsGridProps {
   metrics: StockKeyMetrics;
+  currency?: string;
 }
 
-export function MetricsGrid({ metrics }: MetricsGridProps) {
+export function MetricsGrid({ metrics, currency }: MetricsGridProps) {
   const items = [
     { label: 'Market Cap', value: formatNumber(metrics.marketCap, true) },
     { label: 'Enterprise Value', value: formatNumber(metrics.enterpriseValue, true) },
@@ -18,9 +19,9 @@ export function MetricsGrid({ metrics }: MetricsGridProps) {
     { label: 'PEG Ratio', value: metrics.pegRatio.toFixed(2) },
     { label: 'Price to Book', value: metrics.priceToBook.toFixed(2) },
     { label: 'EV/EBITDA', value: metrics.evEbitda.toFixed(1) },
-    { label: 'EPS', value: `$${metrics.eps.toFixed(2)}` },
+    { label: 'EPS', value: formatCurrency(metrics.eps, currency) },
     { label: 'Beta', value: metrics.beta.toFixed(2) },
-    { label: 'Book Value', value: `$${metrics.bookValue.toFixed(2)}` },
+    { label: 'Book Value', value: formatCurrency(metrics.bookValue, currency) },
     { label: 'Revenue', value: formatNumber(metrics.revenue, true) },
     { label: 'Net Profit', value: formatNumber(metrics.netProfit, true) },
     { label: 'ROE', value: `${metrics.roe.toFixed(1)}%` },

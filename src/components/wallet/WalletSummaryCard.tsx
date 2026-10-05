@@ -16,10 +16,12 @@ interface WalletSummaryCardProps {
   delay?: number;
 }
 
+import { getCurrencySymbol } from '@/lib/currency';
+
 export function WalletSummaryCard({
   label,
   value,
-  prefix = '$',
+  prefix = getCurrencySymbol(),
   decimals = 2,
   change,
   changePercent,

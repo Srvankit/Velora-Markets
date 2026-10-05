@@ -12,6 +12,7 @@ import { AITimeline } from '@/components/ai/AITimeline';
 import { dailyAISummary, smartAlerts, trendingSectors, portfolioAnalysis, watchlistAnalysis } from '@/data/aiInsights';
 import { recommendations } from '@/data/recommendations';
 import { formatRelativeTime } from '@/lib/format';
+import { formatCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 
 const alertIconMap: Record<string, typeof AlertTriangle> = { AlertTriangle, Wallet: DollarSign, Sparkles, DollarSign };
@@ -213,7 +214,7 @@ export default function AIDashboardPage() {
                       </div>
                       <div>
                         <p className="text-sm font-semibold">{item.symbol}</p>
-                        <p className="text-xs text-muted-foreground">${item.price.toFixed(2)}</p>
+                        <p className="text-xs text-muted-foreground">{formatCurrency(item.price)}</p>
                       </div>
                     </div>
                     <span className={cn('rounded-lg px-2 py-0.5 text-[10px] font-medium', catConfig.className)}>

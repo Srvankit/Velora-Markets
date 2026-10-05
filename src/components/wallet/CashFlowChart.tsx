@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { Card } from '@/components/ui/card';
 import { cashFlowData } from '@/data/wallet';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, getCurrencySymbol } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 const tooltipStyle = {
@@ -54,7 +54,7 @@ export function CashFlowChart() {
             <ComposedChart data={cashFlowData} margin={{ top: 8, right: 8, bottom: 0, left: -8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${Math.round(Number(v) / 1000)}k`} />
+              <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${getCurrencySymbol()}${Math.round(Number(v) / 1000)}k`} />
               <Tooltip contentStyle={tooltipStyle} formatter={(v: number, n: string) => [formatCurrency(v), n === 'value' ? modes.find((m) => m.value === mode)?.label : n]} cursor={{ fill: 'hsl(var(--accent))', opacity: 0.3 }} />
               {mode === 'netFlow' ? (
                 <>

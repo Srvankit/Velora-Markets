@@ -5,16 +5,15 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-import { formatCurrency as formatCurrencyLib } from './currency';
-
-export function formatCurrency(
-  value: number,
-  currency = 'INR',
-  compactOrOptions: boolean | { compact?: boolean; decimals?: number; showCode?: boolean } = false,
-): string {
-  const options = typeof compactOrOptions === 'boolean' ? { compact: compactOrOptions } : compactOrOptions;
-  return formatCurrencyLib(value, currency, options);
-}
+export {
+  formatCurrency,
+  convertCurrency,
+  convertAndFormat,
+  getCurrencySymbol,
+  getCurrencyForCountry,
+  getActiveCurrency,
+  setActiveCurrency,
+} from './currency';
 
 export function formatNumber(value: number, compact = false): string {
   return new Intl.NumberFormat('en-US', {

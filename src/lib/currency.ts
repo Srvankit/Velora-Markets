@@ -1,5 +1,15 @@
 /**
  * Velora Markets — Multi-Currency & Locale-Aware Valuation Engine
+ * Supports seamless conversions across:
+ * - India (INR ₹)
+ * - USA (USD $)
+ * - UK (GBP £)
+ * - Europe (EUR €)
+ * - Japan (JPY ¥)
+ * - Canada (CAD CA$)
+ * - Australia (AUD A$)
+ * - UAE (AED AED)
+ * - Singapore (SGD S$)
  */
 
 export interface CurrencyConfig {
@@ -21,21 +31,57 @@ export const SUPPORTED_CURRENCIES: Record<string, CurrencyConfig> = {
   SGD: { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar', locale: 'en-SG' },
 };
 
-// Base exchange rates relative to USD (Authoritative reference rates)
-const FX_TO_USD: Record<string, number> = {
+// Base authoritative reference exchange rates (Units per 1 USD)
+let FX_TO_USD: Record<string, number> = {
   USD: 1.0,
-  INR: 84.15,
-  GBP: 0.77,
-  EUR: 0.92,
-  JPY: 148.50,
-  CAD: 1.38,
-  AUD: 1.49,
-  AED: 3.67,
-  SGD: 1.32,
+  INR: 86.85,
+  GBP: 0.79,
+  EUR: 0.95,
+  JPY: 152.40,
+  CAD: 1.42,
+  AUD: 1.58,
+  AED: 3.6725,
+  SGD: 1.35,
 };
 
-export function getCurrencyForCountry(country?: string): string {
-  if (!country) return 'INR';
+let activeUserCurrency = 'USD';
+
+// Try initializing from session storage / local storage
+if (typeof window !== 'undefined') {
+  try {
+    const raw = localStorage.getItem('velora-auth');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.user?.currency) {
+        activeUserCurrency = parsed.user.currency.toUpperCase();
+      } else if (parsed?.user?.country) {
+        activeUserCurrency = getCurrencyForCountry(parsed.user.country);
+      }
+    }
+  } catch {
+    // fallback to USD
+  }
+}
+
+export function getActiveCurrency(): string {
+  return activeUserCurrency;
+}
+
+export function setActiveCurrency(curr?: string | null): void {
+  if (curr && curr.trim()) {
+    const norm = curr.trim().toUpperCase();
+    if (SUPPORTED_CURRENCIES[norm]) {
+      activeUserCurrency = norm;
+    }
+  }
+}
+
+export function setFxRates(rates: Record<string, number>): void {
+  FX_TO_USD = { ...FX_TO_USD, ...rates };
+}
+
+export function getCurrencyForCountry(country?: string | null): string {
+  if (!country) return 'USD';
   const c = country.trim().toUpperCase();
   switch (c) {
     case 'IN':
@@ -49,46 +95,106 @@ export function getCurrencyForCountry(country?: string): string {
     case 'GB':
     case 'UK':
     case 'UNITED KINGDOM':
+    case 'ENGLAND':
+    case 'SCOTLAND':
+    case 'WALES':
       return 'GBP';
     case 'DE':
     case 'FR':
-    case 'GERMANY':
-    case 'FRANCE':
-    case 'EU':
-    case 'EUROPE':
     case 'IT':
     case 'ES':
     case 'NL':
+    case 'BE':
+    case 'AT':
+    case 'PT':
+    case 'IE':
+    case 'FI':
+    case 'GR':
+    case 'GERMANY':
+    case 'FRANCE':
+    case 'ITALY':
+    case 'SPAIN':
+    case 'NETHERLANDS':
+    case 'BELGIUM':
+    case 'AUSTRIA':
+    case 'PORTUGAL':
+    case 'IRELAND':
+    case 'FINLAND':
+    case 'GREECE':
+    case 'EU':
+    case 'EUROPE':
       return 'EUR';
     case 'JP':
+    case 'JPN':
     case 'JAPAN':
       return 'JPY';
     case 'CA':
+    case 'CAN':
     case 'CANADA':
       return 'CAD';
     case 'AU':
+    case 'AUS':
     case 'AUSTRALIA':
       return 'AUD';
     case 'AE':
     case 'UAE':
     case 'UNITED ARAB EMIRATES':
+    case 'DUBAI':
       return 'AED';
     case 'SG':
+    case 'SGP':
     case 'SINGAPORE':
       return 'SGD';
     default:
-      return 'INR';
+      return 'USD';
   }
 }
 
-export function getCurrencySymbol(currency = 'INR'): string {
-  const norm = (currency || 'INR').toUpperCase();
+export function getCurrencySymbol(currency?: string | null): string {
+  const norm = (currency || activeUserCurrency || 'USD').toUpperCase();
   return SUPPORTED_CURRENCIES[norm]?.symbol ?? norm;
+}
+
+export function convertCurrency(
+  amount: number,
+  fromCurrency = 'USD',
+  toCurrency?: string,
+): {
+  convertedAmount: number;
+  rate: number;
+  from: string;
+  to: string;
+} {
+  const from = (fromCurrency || 'USD').toUpperCase();
+  const to = (toCurrency || activeUserCurrency || 'USD').toUpperCase();
+
+  if (isNaN(amount) || amount === null || amount === undefined) {
+    amount = 0;
+  }
+
+  if (from === to) {
+    return { convertedAmount: amount, rate: 1.0, from, to };
+  }
+
+  const rateFrom = FX_TO_USD[from] ?? 1.0;
+  const rateTo = FX_TO_USD[to] ?? 1.0;
+
+  // Convert `from` -> USD -> `to`
+  const usdAmount = from === 'USD' ? amount : amount / rateFrom;
+  const convertedAmount = to === 'USD' ? usdAmount : usdAmount * rateTo;
+  const effectiveRate = amount !== 0 ? convertedAmount / amount : rateTo / rateFrom;
+
+  return {
+    convertedAmount,
+    rate: effectiveRate,
+    from,
+    to,
+  };
 }
 
 export function formatCurrency(
   amount: number,
-  currency = 'INR',
+  currency?: string | null,
   options?: {
     decimals?: number;
     showCode?: boolean;
@@ -99,7 +205,7 @@ export function formatCurrency(
     amount = 0;
   }
 
-  const norm = (currency || 'INR').toUpperCase();
+  const norm = (currency || activeUserCurrency || 'USD').toUpperCase();
   const config = SUPPORTED_CURRENCIES[norm] || {
     code: norm,
     symbol: norm,
@@ -148,35 +254,17 @@ export function formatCurrency(
   return `${config.symbol}${formattedNum}`;
 }
 
-export function convertCurrency(
+export function convertAndFormat(
   amount: number,
   fromCurrency = 'USD',
-  toCurrency = 'INR',
-): {
-  convertedAmount: number;
-  rate: number;
-  from: string;
-  to: string;
-} {
-  const from = fromCurrency.toUpperCase();
-  const to = toCurrency.toUpperCase();
-
-  if (from === to) {
-    return { convertedAmount: amount, rate: 1.0, from, to };
-  }
-
-  const rateFrom = FX_TO_USD[from] ?? 1.0;
-  const rateTo = FX_TO_USD[to] ?? 1.0;
-
-  // Convert `from` -> USD -> `to`
-  const usdAmount = from === 'USD' ? amount : amount / rateFrom;
-  const convertedAmount = to === 'USD' ? usdAmount : usdAmount * rateTo;
-  const effectiveRate = convertedAmount / (amount || 1);
-
-  return {
-    convertedAmount,
-    rate: effectiveRate,
-    from,
-    to,
-  };
+  toCurrency?: string,
+  options?: {
+    decimals?: number;
+    showCode?: boolean;
+    compact?: boolean;
+  },
+): string {
+  const target = (toCurrency || activeUserCurrency || 'USD').toUpperCase();
+  const { convertedAmount } = convertCurrency(amount, fromCurrency, target);
+  return formatCurrency(convertedAmount, target, options);
 }

@@ -21,12 +21,15 @@ const typeColors: Record<RewardType, string> = {
   milestone: 'bg-chart-3/10 text-chart-3',
 };
 
+import { getCurrencySymbol } from '@/lib/currency';
+
 export function RewardsCard() {
+  const sym = getCurrencySymbol();
   const summaryStats = [
-    { label: 'Total Earned', value: rewardSummary.totalEarned, prefix: '$' },
-    { label: 'Available', value: rewardSummary.available, prefix: '$' },
-    { label: 'Pending', value: rewardSummary.pending, prefix: '$' },
-    { label: 'This Month', value: rewardSummary.thisMonth, prefix: '$' },
+    { label: 'Total Earned', value: rewardSummary.totalEarned, prefix: sym },
+    { label: 'Available', value: rewardSummary.available, prefix: sym },
+    { label: 'Pending', value: rewardSummary.pending, prefix: sym },
+    { label: 'This Month', value: rewardSummary.thisMonth, prefix: sym },
   ];
 
   return (

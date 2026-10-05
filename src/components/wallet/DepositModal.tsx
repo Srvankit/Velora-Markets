@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, getCurrencySymbol } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 type DepositStep = 'form' | 'processing' | 'success';
@@ -68,13 +68,13 @@ export function DepositModal({ open, onOpenChange, walletBalance }: DepositModal
                 <div className="space-y-1.5">
                   <Label className="text-xs">Amount</Label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">{getCurrencySymbol()}</span>
                     <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="pl-7" min="1" />
                   </div>
                   <div className="flex gap-1.5">
                     {['500', '1000', '5000', '10000'].map((preset) => (
                       <button key={preset} onClick={() => setAmount(preset)} className="rounded-lg border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent">
-                        ${preset}
+                        {getCurrencySymbol()}{preset}
                       </button>
                     ))}
                   </div>

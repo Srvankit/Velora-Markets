@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, getCurrencySymbol } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 type WithdrawStep = 'form' | 'confirm' | 'processing' | 'success';
@@ -76,7 +76,7 @@ export function WithdrawModal({ open, onOpenChange, walletBalance }: WithdrawMod
                 <div className="space-y-1.5">
                   <Label className="text-xs">Amount</Label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">{getCurrencySymbol()}</span>
                     <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="pl-7" min="1" />
                   </div>
                   {insufficient && <p className="text-xs text-danger">Insufficient balance. Available: {formatCurrency(walletBalance)}</p>}

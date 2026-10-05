@@ -321,7 +321,7 @@ export default function StudyPage() {
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Velora Coins</span>
               <Badge variant="outline" className="border-warning/40 bg-warning/10 text-warning font-mono text-xs">
-                10 Coins = ₹1
+                10 Coins = {currencySymbol}1
               </Badge>
             </div>
 
@@ -784,7 +784,7 @@ export default function StudyPage() {
           <DialogHeader>
             <div className="flex items-center gap-2 text-xs font-semibold text-warning">
               <Coins className="h-4 w-4" />
-              <span>Velora Coin Redemption (10 Coins = ₹1)</span>
+              <span>Velora Coin Redemption (10 Coins = {currencySymbol}1)</span>
             </div>
             <DialogTitle className="font-display text-lg font-bold">Redeem Academy Reward Coins</DialogTitle>
             <DialogDescription>

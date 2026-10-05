@@ -6,6 +6,7 @@ import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { AuthSuccess } from '@/components/auth/AuthSuccess';
 import { useAuth } from '@/contexts/auth-context';
+import { formatCurrency } from '@/lib/format';
 import { BrandLogo } from '@/components/common/BrandLogo';
 
 export default function AccountCreatedPage() {
@@ -39,7 +40,7 @@ export default function AccountCreatedPage() {
                 Welcome to Velora Markets{user?.name ? `, ${user.name.split(' ')[0]}` : ''}! Your
                 virtual trading account is ready with{' '}
                 <strong className="text-primary">
-                  {user?.currency === 'USD' ? '$100,000' : '₹100,000'} Starting Virtual Capital
+                  {formatCurrency(100000, user?.currency)} Starting Virtual Capital
                 </strong>{' '}
                 allocated to your wallet.
               </>

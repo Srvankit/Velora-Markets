@@ -25,6 +25,14 @@ function toUser(data: BackendUserResponse | BackendAuthResponse, previous?: Auth
   const currency = (data.currency && data.currency.trim()) || previous?.currency || getCurrencyForCountry(country);
   const subscriptionTier = (data.subscriptionTier && data.subscriptionTier.trim()) || previous?.subscriptionTier || 'STANDARD';
   const subscriptionStatus = ('subscriptionStatus' in data && data.subscriptionStatus ? data.subscriptionStatus : previous?.subscriptionStatus || 'ACTIVE');
+
+  // Synchronize global currency state
+  if (currency) {
+    import('@/lib/currency').then((mod) => {
+      mod.setActiveCurrency(currency);
+    });
+  }
+
   return {
     id: String(isMe ? data.id : data.userId),
     name: data.fullName,
