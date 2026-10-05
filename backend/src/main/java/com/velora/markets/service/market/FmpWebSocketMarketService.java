@@ -40,7 +40,14 @@ public class FmpWebSocketMarketService implements WebSocket.Listener {
         @Value("${velora.market.fmp.websocket-endpoint:wss://websockets.financialmodelingprep.com/ws}") String endpoint,
         ObjectMapper mapper
     ) {
-        this.apiKey = apiKey == null ? "" : apiKey.trim();
+        String key = apiKey != null ? apiKey.trim() : "";
+        if (key.isBlank()) {
+            key = System.getenv().getOrDefault("FMP_API_KEY", "");
+        }
+        if (key.isBlank()) {
+            key = System.getenv().getOrDefault("fmp_api_key", "");
+        }
+        this.apiKey = key.replaceAll("^[\"']+|[\"']+$", "").trim();
         this.endpoint = endpoint;
         this.mapper = mapper;
         scheduler.scheduleAtFixedRate(this::heartbeat, 20, 20, TimeUnit.SECONDS);

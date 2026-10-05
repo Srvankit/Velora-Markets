@@ -107,13 +107,16 @@ export default function StockDetailPage() {
       setLoading(true);
       setError(null);
 
-      const [stockResponse, portfolioResponse] = await Promise.all([
-        backendApi.marketStock(symbol),
-        backendApi.portfolio(),
-      ]);
-
+      const stockResponse = await backendApi.marketStock(symbol);
       setStock(mergeMarketStock(stockResponse));
-      setPortfolio(portfolioResponse);
+
+      try {
+        const portfolioResponse = await backendApi.portfolio();
+        setPortfolio(portfolioResponse);
+      } catch {
+        // Unauthenticated or portfolio unavailable - allow stock page and chart to render
+        setPortfolio(null);
+      }
     } catch (err) {
       console.error('Failed to load stock details:', err);
       setError('Unable to load this stock from the market service.');

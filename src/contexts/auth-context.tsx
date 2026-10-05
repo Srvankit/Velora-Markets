@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import axios from 'axios';
 import type { AuthSession, AuthUser, ProfileSetupData } from '@/types';
 import { AUTH_STORAGE_KEY } from '@/constants';
 import { backendApi, getApiErrorMessage, type BackendAuthResponse, type BackendUserResponse } from '@/services/backend';
@@ -55,7 +56,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => { persistSession(session); }, [session]);
   useEffect(() => {
     if (!session?.token) return;
-    backendApi.me().then((me) => setSession((prev) => prev ? { ...prev, user: toUser(me, prev.user) } : prev)).catch(() => setSession(null));
+    backendApi.me().then((me) => {
+      setSession((prev) => {
+        if (!prev) return prev;
+        const updated = { ...prev, user: toUser(me, prev.user) };
+        persistSession(updated);
+        return updated;
+      });
+    }).catch((err) => {
+      // Only clear session if explicitly unauthorized (401), not on network/server errors
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        setSession(null);
+        persistSession(null);
+      }
+    });
   }, []); // restore/validate once on startup
 
   const login = useCallback(async (email: string, password: string) => {
@@ -63,14 +77,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await backendApi.login(email, password);
       if (!response.token) throw new Error('The backend did not return an authentication token.');
-      // Set token first so /users/me is authenticated.
       const provisional = toUser(response);
       const nextSession = { token: response.token, user: provisional };
       persistSession(nextSession);
-      const me = await backendApi.me();
-      const user = toUser(me, provisional);
-      setSession({ token: response.token, user });
-      return user;
+      try {
+        const me = await backendApi.me();
+        const user = toUser(me, provisional);
+        const fullSession = { token: response.token, user };
+        persistSession(fullSession);
+        setSession(fullSession);
+        return user;
+      } catch {
+        setSession(nextSession);
+        return provisional;
+      }
     } catch (e) { throw new Error(getApiErrorMessage(e, 'Unable to sign in.')); }
     finally { setIsLoading(false); }
   }, []);
@@ -81,9 +101,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await backendApi.register(input);
       const response = await backendApi.login(input.email, input.password);
       if (!response.token) throw new Error('Account created, but automatic sign-in failed.');
-      const user = toUser(response);
-      setSession({ token: response.token, user });
-      return user;
+      const provisional = toUser(response);
+      const nextSession = { token: response.token, user: provisional };
+      persistSession(nextSession);
+      try {
+        const me = await backendApi.me();
+        const user = toUser(me, provisional);
+        const fullSession = { token: response.token, user };
+        persistSession(fullSession);
+        setSession(fullSession);
+        return user;
+      } catch {
+        setSession(nextSession);
+        return provisional;
+      }
     } catch (e) { throw new Error(getApiErrorMessage(e, 'Unable to create your account.')); }
     finally { setIsLoading(false); }
   }, []);

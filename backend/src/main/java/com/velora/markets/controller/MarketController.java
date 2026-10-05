@@ -38,6 +38,11 @@ public class MarketController {
         return marketService.getHistory(symbol, timeframe);
     }
 
+    @GetMapping("/status")
+    public java.util.Map<String, Object> status() {
+        return marketService.getProviderStatus();
+    }
+
     @GetMapping("/search")
     public List<MarketStockResponse> search(@RequestParam String query) {
         return marketService.search(query);

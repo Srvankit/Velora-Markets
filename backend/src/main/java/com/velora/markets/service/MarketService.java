@@ -57,6 +57,10 @@ public class MarketService {
         return List.of();
     }
 
+    public java.util.Map<String, Object> getProviderStatus() {
+        return fmpProvider.getDiagnosticInfo();
+    }
+
     @Transactional(readOnly = true)
     public List<MarketStockResponse> search(String query) {
         if (query == null || query.isBlank()) {

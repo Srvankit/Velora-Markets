@@ -35,8 +35,8 @@ export default function LoginPage() {
     try {
       await login(data.email, data.password);
       navigate(from, { replace: true });
-    } catch {
-      setServerError('Invalid email or password. Please try again.');
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : 'Invalid email or password. Please try again.');
     }
   };
 

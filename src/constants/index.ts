@@ -23,25 +23,33 @@ export const APP = {
  */
 export function getNormalizedApiBaseUrl(): string {
   const envUrl = import.meta.env.VITE_API_BASE_URL?.trim();
-  if (!envUrl) {
-    return '/api';
+  if (envUrl && !envUrl.includes('localhost:8080')) {
+    const clean = envUrl.replace(/\/+$/, '');
+    if (clean.endsWith('/api/v1')) {
+      return clean.slice(0, -3);
+    }
+    if (clean.endsWith('/api')) {
+      return clean;
+    }
+    if (clean.endsWith('/v1')) {
+      return clean.replace(/\/v1$/, '/api');
+    }
+    return `${clean}/api`;
   }
-  const clean = envUrl.replace(/\/+$/, '');
-  if (clean.endsWith('/api/v1')) {
-    return clean.slice(0, -3);
+  // Production fallback or when env is missing/pointing to localhost
+  if (import.meta.env.PROD || (typeof window !== 'undefined' && window.location.hostname.includes('pages.dev'))) {
+    return 'https://velora-markets-backend.onrender.com/api';
   }
-  if (clean.endsWith('/api')) {
-    return clean;
+  if (envUrl) {
+    const clean = envUrl.replace(/\/+$/, '');
+    return clean.endsWith('/api') ? clean : `${clean}/api`;
   }
-  if (clean.endsWith('/v1')) {
-    return clean.replace(/\/v1$/, '/api');
-  }
-  return `${clean}/api`;
+  return 'https://velora-markets-backend.onrender.com/api';
 }
 
 export const API_CONFIG = {
   baseURL: getNormalizedApiBaseUrl(),
-  timeout: 15000,
+  timeout: 45000,
   version: 'v1',
 } as const;
 

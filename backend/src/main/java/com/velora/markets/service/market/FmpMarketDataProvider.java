@@ -33,32 +33,64 @@ public class FmpMarketDataProvider implements MarketDataProvider {
     private final String apiKey;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
+    private volatile int lastHttpStatus = 0;
+    private volatile String lastProviderMessage = "NO_REQUESTS_YET";
 
     public FmpMarketDataProvider(
         @Value("${velora.market.fmp.api-key:${FMP_API_KEY:}}") String apiKey,
         ObjectMapper objectMapper
     ) {
-        String key = apiKey != null ? apiKey.trim() : "";
-        if (key.isBlank()) {
-            key = System.getenv().getOrDefault("FMP_API_KEY", "");
-        }
-        if (key.isBlank()) {
-            key = System.getProperty("fmp.api.key", "");
-        }
-        if (key.isBlank()) {
-            key = resolveKeyFromEnvFile();
-        }
-        this.apiKey = key;
+        this.apiKey = resolveKey(apiKey);
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(6))
             .build();
 
         if (isConfigured()) {
-            log.info("FMP Market Data Provider initialized successfully (API Key active).");
+            log.info("FMP Market Data Provider initialized successfully (FMP_API_KEY_PRESENT=true, keyLength={}).", this.apiKey.length());
         } else {
-            log.warn("FMP Market Data Provider initialized without API key; market data is unavailable.");
+            log.warn("FMP Market Data Provider initialized without API key (FMP_API_KEY_PRESENT=false).");
         }
+    }
+
+    private static String resolveKey(String injectedKey) {
+        if (injectedKey != null && !injectedKey.trim().isBlank()) {
+            return clean(injectedKey);
+        }
+        String[] envVars = {
+            "FMP_API_KEY",
+            "fmp_api_key",
+            "FMP_APIKEY",
+            "fmp_apikey",
+            "FMP_KEY",
+            "fmp_key",
+            "VELORA_MARKET_FMP_API_KEY",
+            "velora_market_fmp_api_key",
+            "FINANCIAL_MODELING_PREP_API_KEY"
+        };
+        for (String var : envVars) {
+            String val = System.getenv(var);
+            if (val != null && !val.trim().isBlank()) {
+                return clean(val);
+            }
+        }
+        String[] sysProps = {
+            "fmp.api.key",
+            "FMP_API_KEY",
+            "velora.market.fmp.api-key"
+        };
+        for (String prop : sysProps) {
+            String val = System.getProperty(prop);
+            if (val != null && !val.trim().isBlank()) {
+                return clean(val);
+            }
+        }
+        return clean(resolveKeyFromEnvFile());
+    }
+
+    private static String clean(String raw) {
+        if (raw == null) return "";
+        return raw.trim().replaceAll("^[\"']+|[\"']+$", "").trim();
     }
 
     private static String resolveKeyFromEnvFile() {
@@ -94,14 +126,45 @@ public class FmpMarketDataProvider implements MarketDataProvider {
         return !apiKey.isBlank();
     }
 
+    public java.util.Map<String, Object> getDiagnosticInfo() {
+        java.util.Map<String, Object> diag = new java.util.LinkedHashMap<>();
+        diag.put("provider", getProviderName());
+        diag.put("FMP_API_KEY_PRESENT", isConfigured());
+        diag.put("keyLength", isConfigured() ? apiKey.length() : 0);
+        diag.put("lastHttpStatus", lastHttpStatus);
+        diag.put("lastProviderMessage", lastProviderMessage);
+        diag.put("timestamp", Instant.now().toString());
+        return diag;
+    }
+
+    public String resolveFmpSymbol(Stock stock) {
+        if (stock == null || stock.getSymbol() == null) return "";
+        String sym = stock.getSymbol().trim().toUpperCase();
+        if (stock.getExchange() == Exchange.NSE) {
+            return sym.endsWith(".NS") ? sym : sym + ".NS";
+        }
+        if (stock.getExchange() == Exchange.BSE) {
+            return sym.endsWith(".BO") ? sym : sym + ".BO";
+        }
+        return switch (sym) {
+            case "SPX" -> "^GSPC";
+            case "NDX" -> "^IXIC";
+            case "DJI" -> "^DJI";
+            case "NIFTY50" -> "^NSEI";
+            case "BANKNIFTY" -> "^NSEBANK";
+            default -> sym;
+        };
+    }
+
     @Override
     public MarketStockResponse fetchLiveQuote(Stock stock) {
-        if (!isConfigured()) {
+        if (!isConfigured() || stock == null) {
             return null;
         }
 
+        String fmpSymbol = resolveFmpSymbol(stock);
         try {
-            String url = "https://financialmodelingprep.com/api/v3/quote/" + stock.getSymbol() + "?apikey=" + apiKey;
+            String url = "https://financialmodelingprep.com/api/v3/quote/" + fmpSymbol + "?apikey=" + apiKey;
             HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(5))
@@ -132,17 +195,17 @@ public class FmpMarketDataProvider implements MarketDataProvider {
                     return quote;
                 }
             } else {
-                log.warn("FMP returned HTTP status {} for quote {}", response.statusCode(), stock.getSymbol());
+                log.warn("FMP returned HTTP status {} for quote {}", response.statusCode(), fmpSymbol);
             }
         } catch (Exception e) {
-            log.warn("FMP quote fetch for {} failed: {}", stock.getSymbol(), e.getMessage());
+            log.warn("FMP quote fetch for {} failed: {}", fmpSymbol, e.getMessage());
         }
         return null;
     }
 
     @Override
     public List<HistoricalBarResponse> fetchHistoricalBars(Stock stock, String timeframe) {
-        if (!isConfigured()) {
+        if (!isConfigured() || stock == null) {
             return List.of();
         }
 
@@ -160,7 +223,7 @@ public class FmpMarketDataProvider implements MarketDataProvider {
             }
         }
 
-        // 5D: Try 5-minute intraday first
+        // 5D: Try 5-minute intraday first, then fallback to 15-minute
         if ("5D".equals(tf)) {
             List<HistoricalBarResponse> bars5m = fetchIntradayBars(stock, "5min", 390);
             if (!bars5m.isEmpty()) {
@@ -172,9 +235,10 @@ public class FmpMarketDataProvider implements MarketDataProvider {
             }
         }
 
-        // Daily historical candles for standard timeframes
+        // Daily historical candles for standard timeframes (and fallback for 1D/5D on free/restricted plans)
+        String fmpSymbol = resolveFmpSymbol(stock);
         try {
-            String url = "https://financialmodelingprep.com/api/v3/historical-price-full/" + stock.getSymbol() + "?apikey=" + apiKey;
+            String url = "https://financialmodelingprep.com/api/v3/historical-price-full/" + fmpSymbol + "?apikey=" + apiKey;
             HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(6))
@@ -182,8 +246,14 @@ public class FmpMarketDataProvider implements MarketDataProvider {
                 .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            this.lastHttpStatus = response.statusCode();
             if (response.statusCode() == 200) {
                 JsonNode root = objectMapper.readTree(response.body());
+                if (root.has("Error Message")) {
+                    this.lastProviderMessage = "FMP_ERROR: " + root.get("Error Message").asText();
+                    log.warn("FMP API returned error: {}", this.lastProviderMessage);
+                    return List.of();
+                }
                 JsonNode hist = root.path("historical");
                 if (hist.isArray() && !hist.isEmpty()) {
                     List<HistoricalBarResponse> bars = new ArrayList<>();
@@ -202,20 +272,26 @@ public class FmpMarketDataProvider implements MarketDataProvider {
                     }
                     // Sort chronologically (oldest to newest)
                     bars.sort(Comparator.comparing(HistoricalBarResponse::getTime));
+                    this.lastProviderMessage = "OK: " + bars.size() + " bars received";
                     return bars;
+                } else {
+                    this.lastProviderMessage = "EMPTY_HISTORICAL_ARRAY";
                 }
             } else {
-                log.warn("FMP historical-price-full returned HTTP status {} for {}", response.statusCode(), stock.getSymbol());
+                this.lastProviderMessage = "HTTP_" + response.statusCode();
+                log.warn("FMP historical-price-full returned HTTP status {} for {}", response.statusCode(), fmpSymbol);
             }
         } catch (Exception e) {
-            log.warn("FMP historical bars fetch for {} failed: {}", stock.getSymbol(), e.getMessage());
+            this.lastProviderMessage = "EXCEPTION: " + e.getMessage();
+            log.warn("FMP historical bars fetch for {} failed: {}", fmpSymbol, e.getMessage());
         }
         return List.of();
     }
 
     private List<HistoricalBarResponse> fetchIntradayBars(Stock stock, String interval, int limit) {
+        String fmpSymbol = resolveFmpSymbol(stock);
         try {
-            String url = "https://financialmodelingprep.com/api/v3/historical-chart/" + interval + "/" + stock.getSymbol() + "?apikey=" + apiKey;
+            String url = "https://financialmodelingprep.com/api/v3/historical-chart/" + interval + "/" + fmpSymbol + "?apikey=" + apiKey;
             HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(5))
@@ -223,8 +299,13 @@ public class FmpMarketDataProvider implements MarketDataProvider {
                 .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            this.lastHttpStatus = response.statusCode();
             if (response.statusCode() == 200) {
                 JsonNode root = objectMapper.readTree(response.body());
+                if (root.has("Error Message")) {
+                    this.lastProviderMessage = "FMP_ERROR: " + root.get("Error Message").asText();
+                    return List.of();
+                }
                 if (root.isArray() && !root.isEmpty()) {
                     List<HistoricalBarResponse> bars = new ArrayList<>();
                     int count = 0;
@@ -241,11 +322,14 @@ public class FmpMarketDataProvider implements MarketDataProvider {
                     }
                     // Chronological sort: oldest -> newest
                     bars.sort(Comparator.comparing(HistoricalBarResponse::getTime));
+                    this.lastProviderMessage = "OK: " + bars.size() + " intraday bars received";
                     return bars;
                 }
+            } else {
+                this.lastProviderMessage = "HTTP_" + response.statusCode();
             }
         } catch (Exception e) {
-            log.debug("FMP intraday {} fetch failed for {}: {}", interval, stock.getSymbol(), e.getMessage());
+            log.debug("FMP intraday {} fetch failed for {}: {}", interval, fmpSymbol, e.getMessage());
         }
         return List.of();
     }
