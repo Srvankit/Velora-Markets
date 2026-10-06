@@ -29,8 +29,15 @@ velora:
   portfolio:
     starting-cash: 100000.00
   market:
-    fmp:
-      api-key: ""
+    indian-api:
+      base-url: "http://127.0.0.1:8787"
+      timeout-ms: 2000
+    dhan:
+      client-id: ""
+      access-token: ""
+      base-url: "https://api.dhan.co/v2"
+      feed-url: "wss://api-feed.dhan.co"
+      scrip-master-url: "https://images.dhan.co/api-data/api-scrip-master.csv"
   cors:
     allowed-origins: http://localhost:5173,https://velora-markets.pages.dev
 

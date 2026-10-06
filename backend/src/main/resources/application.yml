@@ -28,9 +28,15 @@ velora:
   portfolio:
     starting-cash: ${VELORA_PORTFOLIO_STARTING_CASH:100000.00}
   market:
-    fmp:
-      api-key: ${FMP_API_KEY:}
-      websocket-endpoint: ${FMP_WEBSOCKET_ENDPOINT:wss://websockets.financialmodelingprep.com/ws}
+    indian-api:
+      base-url: ${INDIAN_MARKET_API_BASE_URL:http://127.0.0.1:8787}
+      timeout-ms: ${INDIAN_MARKET_API_TIMEOUT_MS:5000}
+    dhan:
+      client-id: ${DHAN_CLIENT_ID:}
+      access-token: ${DHAN_ACCESS_TOKEN:}
+      base-url: ${DHAN_BASE_URL:https://api.dhan.co/v2}
+      feed-url: ${DHAN_FEED_URL:wss://api-feed.dhan.co}
+      scrip-master-url: ${DHAN_SCRIP_MASTER_URL:https://images.dhan.co/api-data/api-scrip-master.csv}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:4173,http://127.0.0.1:5173,https://velora-markets.pages.dev}
 
@@ -48,4 +54,4 @@ logging:
   level:
     org.springframework.security: WARN
     com.velora.markets: INFO
-    com.velora.markets.service.market.FmpWebSocketMarketService: DEBUG
+    com.velora.markets.service.market.dhan.DhanWebSocketMarketService: DEBUG

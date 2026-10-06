@@ -69,9 +69,9 @@ public class Stock {
     public void setPreviousClose(BigDecimal previousClose) { this.previousClose = previousClose; }
     public BigDecimal getOpenPrice() { return openPrice != null ? openPrice : previousClose; }
     public void setOpenPrice(BigDecimal openPrice) { this.openPrice = openPrice; }
-    public BigDecimal getHighPrice() { return highPrice != null ? highPrice : (price.max(previousClose)); }
+    public BigDecimal getHighPrice() { return highPrice != null ? highPrice : (price != null && previousClose != null ? price.max(previousClose) : price); }
     public void setHighPrice(BigDecimal highPrice) { this.highPrice = highPrice; }
-    public BigDecimal getLowPrice() { return lowPrice != null ? lowPrice : (price.min(previousClose)); }
+    public BigDecimal getLowPrice() { return lowPrice != null ? lowPrice : (price != null && previousClose != null ? price.min(previousClose) : price); }
     public void setLowPrice(BigDecimal lowPrice) { this.lowPrice = lowPrice; }
     public String getCurrency() { return currency != null ? currency : (exchange == Exchange.NSE || exchange == Exchange.BSE ? "INR" : "USD"); }
     public void setCurrency(String currency) { this.currency = currency; }

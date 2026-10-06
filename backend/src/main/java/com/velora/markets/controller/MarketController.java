@@ -2,7 +2,7 @@ package com.velora.markets.controller;
 
 import com.velora.markets.dto.MarketStockResponse;
 import com.velora.markets.service.MarketService;
-import com.velora.markets.service.market.FmpWebSocketMarketService;
+import com.velora.markets.service.market.dhan.DhanWebSocketMarketService;
 import java.util.List;
 import org.springframework.http.MediaType;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -13,9 +13,9 @@ import org.springframework.web.bind.annotation.*;
 public class MarketController {
 
     private final MarketService marketService;
-    private final FmpWebSocketMarketService streamService;
+    private final DhanWebSocketMarketService streamService;
 
-    public MarketController(MarketService marketService, FmpWebSocketMarketService streamService) {
+    public MarketController(MarketService marketService, DhanWebSocketMarketService streamService) {
         this.marketService = marketService;
         this.streamService = streamService;
     }

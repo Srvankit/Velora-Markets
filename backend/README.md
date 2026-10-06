@@ -34,8 +34,8 @@ SPRING_DATASOURCE_USERNAME=<database-user>
 SPRING_DATASOURCE_PASSWORD=<database-password>
 JWT_SECRET=<secret-at-least-256-bits>
 CORS_ALLOWED_ORIGINS=https://your-frontend.example
-FMP_API_KEY=<fmp-api-key>
-FMP_WEBSOCKET_ENDPOINT=wss://websockets.financialmodelingprep.com/ws
+DHAN_CLIENT_ID=<your-10-digit-dhan-client-id>
+DHAN_ACCESS_TOKEN=<your-dhan-access-token>
 ```
 
 ## Frontend wiring
