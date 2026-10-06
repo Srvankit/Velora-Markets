@@ -97,20 +97,25 @@ public class MarketService {
 
     @Transactional(readOnly = true)
     public List<MarketStockResponse> gainers() {
-        return rankedByChange(false).stream().limit(10).toList();
+        return getAll().stream()
+            .sorted(Comparator.comparing(MarketStockResponse::changePercent).reversed())
+            .limit(10)
+            .toList();
     }
 
     @Transactional(readOnly = true)
     public List<MarketStockResponse> losers() {
-        return rankedByChange(true).stream().limit(10).toList();
+        return getAll().stream()
+            .sorted(Comparator.comparing(MarketStockResponse::changePercent))
+            .limit(10)
+            .toList();
     }
 
     @Transactional(readOnly = true)
     public List<MarketStockResponse> active() {
-        return stockRepository.findAll().stream()
-            .sorted(Comparator.comparingLong(Stock::getVolume).reversed())
+        return getAll().stream()
+            .sorted(Comparator.comparingLong(MarketStockResponse::volume).reversed())
             .limit(10)
-            .map(this::enrichStockQuote)
             .toList();
     }
 
@@ -157,28 +162,5 @@ public class MarketService {
             }
         }
         return mapper.toMarketStock(stock);
-    }
-
-    private List<MarketStockResponse> rankedByChange(boolean ascending) {
-        Comparator<Stock> byPct = Comparator.comparing(this::changePercent);
-        if (!ascending) {
-            byPct = byPct.reversed();
-        }
-        return stockRepository.findAll().stream()
-            .sorted(byPct)
-            .map(this::enrichStockQuote)
-            .toList();
-    }
-
-    private BigDecimal changePercent(Stock stock) {
-        if (stock == null || stock.getPrice() == null || stock.getPreviousClose() == null) {
-            return BigDecimal.ZERO;
-        }
-        if (stock.getPreviousClose().compareTo(BigDecimal.ZERO) == 0) {
-            return BigDecimal.ZERO;
-        }
-        return stock.getPrice().subtract(stock.getPreviousClose())
-            .multiply(BigDecimal.valueOf(100))
-            .divide(stock.getPreviousClose(), 6, RoundingMode.HALF_UP);
     }
 }

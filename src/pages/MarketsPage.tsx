@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { SlidersHorizontal, Search as SearchIcon, Star, TrendingUp, TrendingDown, Activity, Flame, Grid3x3, Newspaper, LayoutGrid } from 'lucide-react';
+import { SlidersHorizontal, Search as SearchIcon, Star, TrendingUp, TrendingDown, Activity, Flame, Grid3x3, Newspaper, LayoutGrid, AlertCircle, RefreshCw } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -20,7 +20,7 @@ import { marketNews, marketCategories, popularSectors } from '@/data/news';
 import { useWatchlist, useRecentSearches } from '@/hooks/use-watchlist';
 import { formatCurrency, formatNumber } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { backendApi } from '@/services/backend';
+import { backendApi, getApiErrorMessage } from '@/services/backend';
 import { mergeMarketStocks } from '@/services/market-data';
 
 export default function MarketsPage() {
@@ -37,51 +37,29 @@ export default function MarketsPage() {
   const [activeStocks, setActiveStocks] = useState<MarketStock[]>([]);
   const [marketError, setMarketError] = useState<string | null>(null);
 
-  useEffect(() => {
-  let cancelled = false;
-
-  async function loadMarket() {
+  const loadMarket = useCallback(async () => {
     try {
       setLoading(true);
       setMarketError(null);
 
-      const [
-        allResponse,
-        gainersResponse,
-        losersResponse,
-        activeResponse,
-      ] = await Promise.all([
-        backendApi.marketStocks(),
-        backendApi.marketGainers(),
-        backendApi.marketLosers(),
-        backendApi.marketActive(),
-      ]);
+      const allResponse = await backendApi.marketStocks();
+      const merged = mergeMarketStocks(allResponse);
 
-      if (cancelled) return;
-
-      setStocks(mergeMarketStocks(allResponse));
-      setGainers(mergeMarketStocks(gainersResponse));
-      setLosers(mergeMarketStocks(losersResponse));
-      setActiveStocks(mergeMarketStocks(activeResponse));
+      setStocks(merged);
+      setGainers([...merged].sort((a, b) => b.changePercent - a.changePercent));
+      setLosers([...merged].sort((a, b) => a.changePercent - b.changePercent));
+      setActiveStocks([...merged].sort((a, b) => b.volume - a.volume));
     } catch (error) {
-      console.error('Failed to load market:', error);
-
-      if (!cancelled) {
-        setMarketError('Unable to load market data.');
-      }
+      console.error('Failed to load market stocks:', error);
+      setMarketError(getApiErrorMessage(error, 'Unable to load market data. Please check your connection or try again.'));
     } finally {
-      if (!cancelled) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
-  }
+  }, []);
 
-  loadMarket();
-
-  return () => {
-    cancelled = true;
-  };
-}, []);
+  useEffect(() => {
+    void loadMarket();
+  }, [loadMarket]);
 
   const filteredStocks = useMemo(() => {
     return stocks.filter((s) => {
@@ -263,12 +241,22 @@ const featuredStock = stocks[0];
                   <StockCardSkeleton key={i} />
                 ))}
               </div>
+            ) : marketError && stocks.length === 0 ? (
+              <Card className="flex flex-col items-center justify-center p-8 text-center">
+                <AlertCircle className="mb-3 h-10 w-10 text-danger/80" />
+                <h3 className="font-display text-base font-semibold">Unable to Load Market Stocks</h3>
+                <p className="mt-1 max-w-md text-sm text-muted-foreground">{marketError}</p>
+                <Button variant="outline" size="sm" className="mt-4 gap-2" onClick={() => void loadMarket()}>
+                  <RefreshCw className="h-4 w-4" />
+                  Try Again
+                </Button>
+              </Card>
             ) : filteredStocks.length === 0 ? (
               <EmptyState
                 icon={<SearchIcon className="h-5 w-5" />}
-                title="No stocks found"
-                description="Try adjusting your search or filters to find what you're looking for."
-                action={
+                title={stocks.length === 0 ? 'No stocks available' : 'No matching stocks found'}
+                description={stocks.length === 0 ? 'Market service returned no stocks.' : "Try adjusting your search or filters to find what you're looking for."}
+                action={stocks.length > 0 ? (
                   <Button
                     variant="outline"
                     size="sm"
@@ -279,7 +267,7 @@ const featuredStock = stocks[0];
                   >
                     Clear all
                   </Button>
-                }
+                ) : undefined}
               />
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

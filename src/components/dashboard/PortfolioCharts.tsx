@@ -35,6 +35,7 @@ import {
   backendApi,
   type BackendPortfolio,
 } from '@/services/backend';
+import { useAuth } from '@/contexts/auth-context';
 
 import {
   formatCurrency,
@@ -52,41 +53,63 @@ const tooltipStyle = {
   fontSize: '0.75rem',
 };
 
-export function PortfolioCharts() {
-  const [portfolio, setPortfolio] =
-    useState<BackendPortfolio | null>(
-      null,
-    );
+export interface PortfolioChartsProps {
+  portfolio?: BackendPortfolio | null;
+  loading?: boolean;
+  error?: boolean;
+}
 
-  const [loading, setLoading] =
-    useState(true);
+export function PortfolioCharts({
+  portfolio: propPortfolio,
+  loading: propLoading,
+  error: propError,
+}: PortfolioChartsProps = {}) {
+  const { isAuthenticated } = useAuth();
+  const [internalPortfolio, setInternalPortfolio] =
+    useState<BackendPortfolio | null>(null);
 
-  const [error, setError] =
+  const [internalLoading, setInternalLoading] =
+    useState(isAuthenticated && propPortfolio === undefined);
+
+  const [internalError, setInternalError] =
     useState(false);
 
+  const isControlled = propPortfolio !== undefined || propLoading !== undefined || propError !== undefined;
+  const portfolio = isControlled ? propPortfolio : internalPortfolio;
+  const loading = isControlled ? (propLoading ?? false) : internalLoading;
+  const error = isControlled ? (propError ?? false) : internalError;
+
   useEffect(() => {
+    if (isControlled) return;
+    if (!isAuthenticated) {
+      setInternalPortfolio(null);
+      setInternalLoading(false);
+      return;
+    }
+
     async function loadPortfolio() {
       try {
-        setError(false);
+        setInternalError(false);
+        setInternalLoading(true);
 
         const response =
           await backendApi.portfolio();
 
-        setPortfolio(response);
+        setInternalPortfolio(response);
       } catch (err) {
         console.error(
           'Failed to load portfolio charts:',
           err,
         );
 
-        setError(true);
+        setInternalError(true);
       } finally {
-        setLoading(false);
+        setInternalLoading(false);
       }
     }
 
     void loadPortfolio();
-  }, []);
+  }, [isControlled, isAuthenticated]);
 
   // =========================================================
   // REAL HOLDING ALLOCATION

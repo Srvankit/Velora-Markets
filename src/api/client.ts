@@ -40,18 +40,13 @@ apiClient.interceptors.request.use(
 );
 
 /**
- * Handle authentication failures globally.
+ * Response interceptor.
+ * Note: Session termination is managed explicitly by AuthContext for genuine auth failures (e.g. /users/me).
+ * Global 401 rejection passes the error to callers without wiping local state prematurely.
  */
 apiClient.interceptors.response.use(
   (response) => response,
-
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem(TOKEN_KEY);
-    }
-
-    return Promise.reject(error);
-  },
+  (error) => Promise.reject(error),
 );
 
 export async function apiRequest<T>(

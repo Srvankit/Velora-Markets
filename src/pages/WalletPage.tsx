@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 
 import {
   backendApi,
+  getApiErrorMessage,
   type BackendWalletSummary,
   type BackendWalletLedger,
 } from '@/services/backend';
@@ -41,16 +42,33 @@ export default function WalletPage() {
   const loadWalletData = useCallback(async () => {
     try {
       setError(null);
-      const [walletRes, ledgerRes] = await Promise.all([
+      const [walletRes, ledgerRes] = await Promise.allSettled([
         backendApi.wallet(),
         backendApi.walletLedger(0, 50),
       ]);
 
-      setWallet(walletRes);
-      setLedger(Array.isArray(ledgerRes) ? ledgerRes : (ledgerRes?.content ?? []));
+      let errorMsg: string | null = null;
+
+      if (walletRes.status === 'fulfilled') {
+        setWallet(walletRes.value);
+      } else {
+        console.error('Failed to load wallet summary:', walletRes.reason);
+        errorMsg = getApiErrorMessage(walletRes.reason, 'Unable to load wallet summary.');
+      }
+
+      if (ledgerRes.status === 'fulfilled') {
+        const data = ledgerRes.value;
+        setLedger(Array.isArray(data) ? data : (data?.content ?? []));
+      } else {
+        console.error('Failed to load wallet ledger:', ledgerRes.reason);
+      }
+
+      if (walletRes.status === 'rejected' && ledgerRes.status === 'rejected') {
+        setError(errorMsg || 'Unable to connect to virtual wallet service.');
+      }
     } catch (err) {
       console.error('Failed to load wallet data:', err);
-      setError('Unable to load virtual wallet details.');
+      setError(getApiErrorMessage(err, 'Unable to load virtual wallet details.'));
     } finally {
       setLoading(false);
       setRefreshing(false);

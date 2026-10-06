@@ -49,7 +49,7 @@ export function getNormalizedApiBaseUrl(): string {
 
 export const API_CONFIG = {
   baseURL: getNormalizedApiBaseUrl(),
-  timeout: 45000,
+  timeout: 15000,
   version: 'v1',
 } as const;
 

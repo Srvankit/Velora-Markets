@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, TrendingUp, Zap, Briefcase } from 'lucide-react';
+import { Wallet, TrendingUp, Zap, Briefcase, RefreshCw, AlertCircle, Lock } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { AnimatedCounter } from '@/components/common/AnimatedCounter';
 import { backendApi, type BackendPortfolio } from '@/services/backend';
 import { useAuth } from '@/contexts/auth-context';
@@ -15,22 +16,50 @@ const accentClasses = {
   danger: 'bg-danger/10 text-danger',
 };
 
-export function PortfolioOverview() {
-  const { user } = useAuth();
+export interface PortfolioOverviewProps {
+  portfolio?: BackendPortfolio | null;
+  loading?: boolean;
+  error?: boolean;
+  onRetry?: () => void;
+}
+
+export function PortfolioOverview({
+  portfolio: propPortfolio,
+  loading: propLoading,
+  error: propError,
+  onRetry,
+}: PortfolioOverviewProps = {}) {
+  const { user, isAuthenticated } = useAuth();
   const currency = user?.currency || 'INR';
   const currencySymbol = getCurrencySymbol(currency);
-  const [portfolio, setPortfolio] = useState<BackendPortfolio | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [internalPortfolio, setInternalPortfolio] = useState<BackendPortfolio | null>(null);
+  const [internalLoading, setInternalLoading] = useState(isAuthenticated && propPortfolio === undefined);
+  const [internalError, setInternalError] = useState(false);
+
+  const isControlled = propPortfolio !== undefined || propLoading !== undefined || propError !== undefined;
+  const portfolio = isControlled ? propPortfolio : internalPortfolio;
+  const loading = isControlled ? (propLoading ?? false) : internalLoading;
+  const error = isControlled ? (propError ?? false) : internalError;
 
   useEffect(() => {
+    if (isControlled) return;
+    if (!isAuthenticated) {
+      setInternalPortfolio(null);
+      setInternalLoading(false);
+      return;
+    }
+
+    setInternalLoading(true);
+    setInternalError(false);
     backendApi
       .portfolio()
-      .then(setPortfolio)
-      .catch((error) => {
-        console.error('Failed to load portfolio:', error);
+      .then(setInternalPortfolio)
+      .catch((err) => {
+        console.error('Failed to load portfolio:', err);
+        setInternalError(true);
       })
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => setInternalLoading(false));
+  }, [isControlled, isAuthenticated]);
 
   if (loading) {
     return (
@@ -42,10 +71,38 @@ export function PortfolioOverview() {
     );
   }
 
-  if (!portfolio) {
+  if (!isAuthenticated) {
     return (
-      <Card className="p-5 text-sm text-muted-foreground">
-        Unable to load portfolio data.
+      <Card className="flex items-center justify-between p-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Lock className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold">Virtual Portfolio</h3>
+            <p className="text-xs text-muted-foreground">Sign in to view your virtual holdings, trading balance, and live P&L.</p>
+          </div>
+        </div>
+        <Button size="sm" variant="outline" asChild>
+          <a href="/login">Sign In</a>
+        </Button>
+      </Card>
+    );
+  }
+
+  if (error || !portfolio) {
+    return (
+      <Card className="flex items-center justify-between p-5 text-sm">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <AlertCircle className="h-4 w-4 text-warning" />
+          <span>Unable to load portfolio data.</span>
+        </div>
+        {onRetry && (
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={onRetry}>
+            <RefreshCw className="h-3.5 w-3.5" />
+            Retry
+          </Button>
+        )}
       </Card>
     );
   }

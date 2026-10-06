@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, Star, Newspaper, Sparkles, Calendar, Gauge } from 'lucide-react';
 import { WelcomeSection } from '@/components/dashboard/WelcomeSection';
@@ -13,8 +14,40 @@ import { QuickActions } from '@/components/dashboard/QuickActions';
 import { MarketSentiment } from '@/components/dashboard/MarketSentiment';
 import { UpcomingEvents } from '@/components/dashboard/UpcomingEvents';
 import { staggerContainer, staggerItem } from '@/lib/animations';
+import { useAuth } from '@/contexts/auth-context';
+import { backendApi, type BackendPortfolio } from '@/services/backend';
 
 export default function DashboardPage() {
+  const { isAuthenticated } = useAuth();
+  const [portfolio, setPortfolio] = useState<BackendPortfolio | null>(null);
+  const [portfolioLoading, setPortfolioLoading] = useState(isAuthenticated);
+  const [portfolioError, setPortfolioError] = useState(false);
+
+  const fetchPortfolio = useCallback(async () => {
+    if (!isAuthenticated) {
+      setPortfolio(null);
+      setPortfolioLoading(false);
+      setPortfolioError(false);
+      return;
+    }
+
+    try {
+      setPortfolioLoading(true);
+      setPortfolioError(false);
+      const data = await backendApi.portfolio();
+      setPortfolio(data);
+    } catch (err) {
+      console.error('Failed to load portfolio on dashboard:', err);
+      setPortfolioError(true);
+    } finally {
+      setPortfolioLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    void fetchPortfolio();
+  }, [fetchPortfolio]);
+
   return (
     <motion.div
       variants={staggerContainer}
@@ -27,7 +60,12 @@ export default function DashboardPage() {
       </motion.div>
 
       <motion.div variants={staggerItem}>
-        <PortfolioOverview />
+        <PortfolioOverview
+          portfolio={portfolio}
+          loading={portfolioLoading}
+          error={portfolioError}
+          onRetry={fetchPortfolio}
+        />
       </motion.div>
 
       <motion.div variants={staggerItem}>
@@ -49,11 +87,20 @@ export default function DashboardPage() {
       </motion.div>
 
       <motion.div variants={staggerItem}>
-        <PortfolioCharts />
+        <PortfolioCharts
+          portfolio={portfolio}
+          loading={portfolioLoading}
+          error={portfolioError}
+        />
       </motion.div>
 
       <motion.div variants={staggerItem}>
-        <HoldingsTable />
+        <HoldingsTable
+          portfolio={portfolio}
+          loading={portfolioLoading}
+          error={portfolioError}
+          onRetry={fetchPortfolio}
+        />
       </motion.div>
 
       <div className="grid gap-6 lg:grid-cols-2">

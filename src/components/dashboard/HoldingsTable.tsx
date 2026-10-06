@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Briefcase } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import {
   Table,
@@ -11,27 +11,58 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { backendApi, type BackendPortfolio } from '@/services/backend';
+import { useAuth } from '@/contexts/auth-context';
 import { formatCurrency } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-export function HoldingsTable() {
-  const [portfolio, setPortfolio] = useState<BackendPortfolio | null>(null);
+export interface HoldingsTableProps {
+  portfolio?: BackendPortfolio | null;
+  loading?: boolean;
+  error?: boolean;
+  onRetry?: () => void;
+}
+
+export function HoldingsTable({
+  portfolio: propPortfolio,
+  loading: propLoading,
+  error: propError,
+}: HoldingsTableProps = {}) {
+  const { isAuthenticated } = useAuth();
+  const [internalPortfolio, setInternalPortfolio] = useState<BackendPortfolio | null>(null);
+  const [internalLoading, setInternalLoading] = useState(isAuthenticated && propPortfolio === undefined);
+
+  const isControlled = propPortfolio !== undefined || propLoading !== undefined || propError !== undefined;
+  const portfolio = isControlled ? propPortfolio : internalPortfolio;
+  const loading = isControlled ? (propLoading ?? false) : internalLoading;
 
   useEffect(() => {
+    if (isControlled) return;
+    if (!isAuthenticated) {
+      setInternalPortfolio(null);
+      setInternalLoading(false);
+      return;
+    }
+
+    setInternalLoading(true);
     backendApi
       .portfolio()
-      .then(setPortfolio)
+      .then(setInternalPortfolio)
       .catch((error) => {
         console.error('Failed to load holdings:', error);
-      });
-  }, []);
+      })
+      .finally(() => setInternalLoading(false));
+  }, [isControlled, isAuthenticated]);
 
-  if (!portfolio) {
+  if (loading) {
     return (
-      <Card className="p-5 text-sm text-muted-foreground">
+      <Card className="p-5 text-sm text-muted-foreground animate-pulse">
         Loading portfolio holdings...
       </Card>
     );
+  }
+
+  if (!isAuthenticated || !portfolio) {
+    return null;
   }
 
   const holdings = portfolio.holdings;

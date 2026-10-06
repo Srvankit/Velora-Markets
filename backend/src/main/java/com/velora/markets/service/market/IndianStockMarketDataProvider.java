@@ -30,11 +30,11 @@ public class IndianStockMarketDataProvider implements MarketDataProvider {
 
     @org.springframework.beans.factory.annotation.Autowired
     public IndianStockMarketDataProvider(
-        @Value("${velora.market.indian-api.base-url:${INDIAN_MARKET_API_BASE_URL:http://127.0.0.1:8787}}") String baseUrl,
-        @Value("${velora.market.indian-api.timeout-ms:5000}") int timeoutMs,
+        @Value("${velora.market.indian-api.base-url:${INDIAN_MARKET_API_BASE_URL:https://stock-api.ankityadav-reh.workers.dev}}") String baseUrl,
+        @Value("${velora.market.indian-api.timeout-ms:8000}") int timeoutMs,
         ObjectMapper objectMapper
     ) {
-        this.baseUrl = baseUrl != null ? baseUrl.trim().replaceAll("/+$", "") : "http://127.0.0.1:8787";
+        this.baseUrl = baseUrl != null ? baseUrl.trim().replaceAll("/+$", "") : "https://stock-api.ankityadav-reh.workers.dev";
         this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
 
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
@@ -48,7 +48,7 @@ public class IndianStockMarketDataProvider implements MarketDataProvider {
     }
 
     public IndianStockMarketDataProvider(String baseUrl, RestClient restClient, ObjectMapper objectMapper) {
-        this.baseUrl = baseUrl != null ? baseUrl.trim().replaceAll("/+$", "") : "http://127.0.0.1:8787";
+        this.baseUrl = baseUrl != null ? baseUrl.trim().replaceAll("/+$", "") : "https://stock-api.ankityadav-reh.workers.dev";
         this.restClient = restClient;
         this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
     }

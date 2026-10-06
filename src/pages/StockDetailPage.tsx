@@ -52,6 +52,7 @@ import {
 
 import { useWatchlist } from '@/hooks/use-watchlist';
 import { useTrading } from '@/contexts/trading-context';
+import { useAuth } from '@/contexts/auth-context';
 
 import { cn } from '@/lib/utils';
 
@@ -68,6 +69,7 @@ export default function StockDetailPage() {
   const { symbol } = useParams<{ symbol: string }>();
   const navigate = useNavigate();
 
+  const { isAuthenticated } = useAuth();
   const { has, toggle } = useWatchlist();
   const { placeOrder } = useTrading();
 
@@ -93,7 +95,7 @@ export default function StockDetailPage() {
   const [orderLoading, setOrderLoading] = useState(false);
 
   // =========================================================
-  // LOAD STOCK + PORTFOLIO
+  // LOAD PRIMARY STOCK DETAILS
   // =========================================================
 
   async function loadStockDetails() {
@@ -109,14 +111,6 @@ export default function StockDetailPage() {
 
       const stockResponse = await backendApi.marketStock(symbol);
       setStock(mergeMarketStock(stockResponse));
-
-      try {
-        const portfolioResponse = await backendApi.portfolio();
-        setPortfolio(portfolioResponse);
-      } catch {
-        // Unauthenticated or portfolio unavailable - allow stock page and chart to render
-        setPortfolio(null);
-      }
     } catch (err) {
       console.error('Failed to load stock details:', err);
       setError('Unable to load this stock from the market service.');
@@ -128,6 +122,32 @@ export default function StockDetailPage() {
   useEffect(() => {
     void loadStockDetails();
   }, [symbol]);
+
+  // =========================================================
+  // LOAD PORTFOLIO INDEPENDENTLY (AUTHENTICATED ONLY)
+  // =========================================================
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setPortfolio(null);
+      return;
+    }
+
+    let isMounted = true;
+    backendApi
+      .portfolio()
+      .then((res) => {
+        if (isMounted) setPortfolio(res);
+      })
+      .catch((err) => {
+        console.warn('Optional portfolio load failed:', err);
+        if (isMounted) setPortfolio(null);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated]);
 
   // =========================================================
   // PREVIEW ORDER

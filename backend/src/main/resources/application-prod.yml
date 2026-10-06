@@ -40,3 +40,9 @@ spring:
           lob:
             non_contextual_creation: true
 
+velora:
+  market:
+    indian-api:
+      base-url: ${INDIAN_MARKET_API_BASE_URL:https://stock-api.ankityadav-reh.workers.dev}
+      timeout-ms: ${INDIAN_MARKET_API_TIMEOUT_MS:8000}
+

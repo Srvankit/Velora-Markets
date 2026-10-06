@@ -29,8 +29,8 @@ velora:
     starting-cash: ${VELORA_PORTFOLIO_STARTING_CASH:100000.00}
   market:
     indian-api:
-      base-url: ${INDIAN_MARKET_API_BASE_URL:http://127.0.0.1:8787}
-      timeout-ms: ${INDIAN_MARKET_API_TIMEOUT_MS:5000}
+      base-url: ${INDIAN_MARKET_API_BASE_URL:https://stock-api.ankityadav-reh.workers.dev}
+      timeout-ms: ${INDIAN_MARKET_API_TIMEOUT_MS:8000}
     dhan:
       client-id: ${DHAN_CLIENT_ID:}
       access-token: ${DHAN_ACCESS_TOKEN:}
