@@ -98,7 +98,9 @@ public class MarketService {
     @Transactional(readOnly = true)
     public List<MarketStockResponse> gainers() {
         return getAll().stream()
-            .sorted(Comparator.comparing(MarketStockResponse::changePercent).reversed())
+            .sorted(Comparator.comparing(
+                (MarketStockResponse s) -> s.getChangePercent() != null ? s.getChangePercent() : BigDecimal.ZERO
+            ).reversed())
             .limit(10)
             .toList();
     }
@@ -106,7 +108,9 @@ public class MarketService {
     @Transactional(readOnly = true)
     public List<MarketStockResponse> losers() {
         return getAll().stream()
-            .sorted(Comparator.comparing(MarketStockResponse::changePercent))
+            .sorted(Comparator.comparing(
+                (MarketStockResponse s) -> s.getChangePercent() != null ? s.getChangePercent() : BigDecimal.ZERO
+            ))
             .limit(10)
             .toList();
     }
@@ -114,7 +118,7 @@ public class MarketService {
     @Transactional(readOnly = true)
     public List<MarketStockResponse> active() {
         return getAll().stream()
-            .sorted(Comparator.comparingLong(MarketStockResponse::volume).reversed())
+            .sorted(Comparator.comparingLong(MarketStockResponse::getVolume).reversed())
             .limit(10)
             .toList();
     }
